@@ -39,12 +39,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onOpenMobile
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
-  // Auto scroll to bottom
+  // Track if user is reading previous messages so we don't yank their view
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 140;
+  };
+
+  // Smooth jitter-free auto scroll to bottom only when user is near bottom
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (!scrollRef.current || !isNearBottomRef.current) return;
+
+    requestAnimationFrame(() => {
+      if (scrollRef.current && isNearBottomRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
   }, [conversation?.messages, isRunning, securityError]);
 
   if (!project) {
@@ -65,9 +77,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const messages = conversation?.messages || [];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-50/60 dark:bg-zinc-950 min-w-0 transition-colors duration-200">
-      {/* Top Header */}
-      <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur px-3 sm:px-6 flex items-center justify-between shrink-0">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-zinc-50/60 dark:bg-zinc-950 min-w-0 transition-colors duration-200 overflow-hidden relative">
+      {/* Top Header - Fixed / Sticky */}
+      <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur px-3 sm:px-6 flex items-center justify-between shrink-0 z-20 sticky top-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2 sm:mr-4">
           {/* Mobile hamburger menu toggle */}
           <button
@@ -133,16 +145,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       </header>
 
       {/* Security & Resilience Banner */}
-      <div className="px-3 sm:px-6 py-1.5 bg-white/60 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800/60 text-[11px] text-zinc-600 dark:text-zinc-400 font-mono flex items-center justify-between">
-        <div className="flex items-center gap-1.5 min-w-0 mr-2 truncate">
+      <div className="px-3 sm:px-6 py-1 bg-zinc-100/60 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0 truncate">
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-          <span className="truncate">Сессия в фоне: вкладку можно закрыть в любой момент.</span>
+          <span className="truncate">Сессия в фоне: вкладку браузера можно закрывать в любой момент.</span>
         </div>
-        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0 hidden md:inline">Защита активна</span>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      {/* Messages Scroll Area - Scrollable middle */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-4 overscroll-contain"
+      >
         {/* Security Warning Banner if Blocked */}
         {securityError && (
           <div className="max-w-4xl mx-auto p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-200 text-xs flex items-start justify-between gap-3 shadow-sm">
@@ -210,12 +225,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </div>
 
-      {/* Input area */}
-      <PromptInput
-        onSend={onSendPrompt}
-        onStop={onStop}
-        isRunning={isRunning}
-      />
+      {/* Input area - Fixed / Sticky Bottom */}
+      <div className="shrink-0 sticky bottom-0 z-20">
+        <PromptInput
+          onSend={onSendPrompt}
+          onStop={onStop}
+          isRunning={isRunning}
+        />
+      </div>
     </div>
   );
 };

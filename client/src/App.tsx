@@ -552,7 +552,7 @@ export const App: React.FC = () => {
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans transition-colors duration-200">
+    <div className="flex fixed inset-0 h-[100dvh] max-h-[100dvh] w-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans transition-colors duration-200">
       <Sidebar
         projects={projects}
         selectedProjectId={selectedProjectId}

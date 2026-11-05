@@ -114,11 +114,13 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
           <div className="flex items-center gap-2.5 text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm py-2 px-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 font-mono">
             <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />
             <span>
-              {message.steps && message.steps.some((s) => s.status === 'active')
-                ? 'Выполняю действия над проектом...'
-                : message.steps && message.steps.length > 0
-                ? 'Действия завершены, формирую ответ...'
-                : 'Анализирую проект и обдумываю решение...'}
+              {(() => {
+                const activeStep = message.steps?.find((s) => s.status === 'active');
+                if (activeStep) {
+                  return `Выполняю: ${activeStep.toolName || 'действие'}...`;
+                }
+                return 'Gemini выполняет задачу...';
+              })()}
             </span>
           </div>
         ) : message.steps && message.steps.length > 0 ? (

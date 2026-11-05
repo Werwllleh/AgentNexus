@@ -10,7 +10,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  X
+  X,
+  Cpu
 } from 'lucide-react';
 import { Project, Conversation } from '../types.ts';
 import { Theme } from '../services/theme.ts';
@@ -84,12 +85,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
+              <h1 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tracking-tight truncate flex items-center gap-1.5">
                 Gemini Hub
+                <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
+                  CLI
+                </span>
               </h1>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
-                /home/alex/apps
-              </p>
             </div>
           </div>
 
@@ -131,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Projects List */}
+        {/* Projects List - Expanded height */}
         <div className="p-3 border-b border-zinc-200 dark:border-zinc-800/80">
           <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -140,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           </div>
 
-          <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
+          <div className="space-y-1 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-0.5">
             {projects.map((proj) => {
               const isSelected = proj.id === selectedProjectId;
               return (
@@ -255,8 +256,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
+        {/* Model Limits Widget (Bottom-Left Corner) */}
+        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 text-xs shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-200">
+              <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Лимиты модели</span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
+              Pro Tier
+            </span>
+          </div>
+
+          <div className="space-y-1.5 font-mono text-[11px] text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-950 p-2 rounded-lg border border-zinc-200/80 dark:border-zinc-800">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-600 dark:text-zinc-400">Модель:</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-200">Gemini 3.8 Flash</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-600 dark:text-zinc-400">Контекст:</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold">1,000,000 токенов</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-600 dark:text-zinc-400">Вывод (max):</span>
+              <span className="text-zinc-700 dark:text-zinc-300">64,000 токенов</span>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60 text-[10px]">
+              <span className="text-zinc-400 dark:text-zinc-500">Квота:</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                Без ограничений
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Footer / Multiplexer Status & Logout */}
-        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950 text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center justify-between">
+        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950 text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Daemon: Active</span>
