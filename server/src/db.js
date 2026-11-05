@@ -57,6 +57,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_steps_msg ON steps(message_id);
 `);
 
+// Safe migration for agy_id column
+try {
+  db.exec('ALTER TABLE conversations ADD COLUMN agy_id TEXT');
+} catch {
+  // column already exists
+}
+
+// Clean up orphaned streaming messages and reset conversations on startup
+try {
+  db.exec(`
+    DELETE FROM messages WHERE status = 'streaming' AND content = '';
+    UPDATE messages SET status = 'stopped' WHERE status = 'streaming';
+    UPDATE conversations SET status = 'idle' WHERE status = 'running';
+  `);
+} catch (err) {
+  console.error('Error cleaning orphaned sessions in DB:', err);
+}
+
 // Repository helpers
 export const dbRepo = {
   // Projects
@@ -93,7 +111,7 @@ export const dbRepo = {
     return this.getConversation(id);
   },
 
-  updateConversation(id, { title, status, lastError }) {
+  updateConversation(id, { title, status, lastError, agyId }) {
     const now = Date.now();
     if (title !== undefined) {
       db.prepare('UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?').run(title, now, id);
@@ -103,6 +121,9 @@ export const dbRepo = {
     }
     if (lastError !== undefined) {
       db.prepare('UPDATE conversations SET last_error = ?, updated_at = ? WHERE id = ?').run(lastError, now, id);
+    }
+    if (agyId !== undefined) {
+      db.prepare('UPDATE conversations SET agy_id = ?, updated_at = ? WHERE id = ?').run(agyId, now, id);
     }
   },
 

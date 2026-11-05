@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Terminal,
   FileCode,
@@ -19,8 +19,14 @@ interface ToolAccordionProps {
 }
 
 export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(step.status === 'active');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (step.status === 'active') {
+      setIsOpen(true);
+    }
+  }, [step.status]);
 
   const getToolIcon = (name?: string) => {
     switch (name) {

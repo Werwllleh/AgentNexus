@@ -29,7 +29,7 @@ export function broadcastToConversation(conversationId, payload) {
   if (!wssInstance) return;
   const message = JSON.stringify(payload);
   for (const client of wssInstance.clients) {
-    if (client.readyState === 1 && client.subscribedConversationId === conversationId) {
+    if (client.readyState === 1 && (client.subscribedConversationId === conversationId || !client.subscribedConversationId)) {
       client.send(message);
     }
   }
@@ -99,8 +99,9 @@ export async function startTurn({ projectId, projectPath, conversationId, prompt
   let actualConversationId = conversationId;
 
   // If conversationId is provided and exists, update its status
+  let existing = null;
   if (actualConversationId) {
-    const existing = dbRepo.getConversation(actualConversationId);
+    existing = dbRepo.getConversation(actualConversationId);
     if (!existing) {
       dbRepo.createConversation(actualConversationId, projectId, prompt.slice(0, 40) + '...');
     } else {
@@ -119,8 +120,9 @@ export async function startTurn({ projectId, projectPath, conversationId, prompt
     '--dangerously-skip-permissions',
   ];
 
-  if (actualConversationId) {
-    args.push('--conversation', actualConversationId);
+  // If conversation already has an active agy conversation ID, resume it!
+  if (existing?.agy_id) {
+    args.push('--conversation', existing.agy_id);
   }
   if (mode && mode !== 'auto' && mode !== 'default') {
     args.push('--mode', mode);
@@ -250,6 +252,10 @@ function handleStreamEvent(event, session) {
   // 1. Init event
   if (event.event === 'init') {
     const cid = event.conversation_id;
+    if (cid && session.conversationId) {
+      dbRepo.updateConversation(session.conversationId, { agyId: cid });
+    }
+
     if (!session.conversationId) {
       session.conversationId = cid;
       activeSessions.set(cid, session);
@@ -261,7 +267,7 @@ function handleStreamEvent(event, session) {
       dbRepo.createConversation(cid, session.projectId, title);
       dbRepo.createMessage(session.userMsgId, cid, 'user', session.prompt || 'Промпт', 'done');
       dbRepo.createMessage(session.assistantMessageId, cid, 'assistant', '', 'streaming');
-      dbRepo.updateConversation(cid, { status: 'running' });
+      dbRepo.updateConversation(cid, { status: 'running', agyId: cid });
 
       broadcast({
         type: 'conversation_created',
@@ -296,6 +302,12 @@ function handleStreamEvent(event, session) {
           messageId: session.assistantMessageId,
           delta: su.text_delta,
           fullContent: session.accumulatedText
+        });
+      } else if (su.state === 'ACTIVE') {
+        broadcastToConversation(convId, {
+          type: 'agent_thinking',
+          conversationId: convId,
+          messageId: session.assistantMessageId
         });
       }
 

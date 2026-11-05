@@ -2,26 +2,44 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Custom scrollbar */
+/* Custom minimalist scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.25) transparent;
+}
+.dark * {
+  scrollbar-color: rgba(63, 63, 70, 0.4) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #a1a1aa;
-  border-radius: 3px;
+  background: rgba(161, 161, 170, 0.25);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: rgba(63, 63, 70, 0.4);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #71717a;
+  background: rgba(113, 113, 122, 0.6);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: rgba(113, 113, 122, 0.7);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 /* Light & Dark Markdown prose styles */
@@ -114,29 +132,75 @@
   color: #a1a1aa;
 }
 
+/* Markdown Tables - Responsive & Modern */
 .markdown-body table {
+  display: block;
   width: 100%;
-  border-collapse: collapse;
-  margin: 0.75rem 0;
-}
-
-.markdown-body th, .markdown-body td {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
   border: 1px solid #e4e4e7;
-  padding: 0.5rem 0.75rem;
-  text-align: left;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
 }
-.dark .markdown-body th, .dark .markdown-body td {
+.dark .markdown-body table {
   border-color: #27272a;
 }
 
+.markdown-body table::-webkit-scrollbar {
+  height: 4px;
+}
+.markdown-body table::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+.dark .markdown-body table::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.3);
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  border-bottom: 1px solid #e4e4e7;
+  border-right: 1px solid #f4f4f5;
+  white-space: nowrap;
+}
+.markdown-body tr:last-child td {
+  border-bottom: none;
+}
+.markdown-body th:last-child,
+.markdown-body td:last-child {
+  border-right: none;
+}
+
+.dark .markdown-body th,
+.dark .markdown-body td {
+  border-bottom-color: #27272a;
+  border-right-color: #1f1f23;
+}
+
 .markdown-body th {
-  background-color: #f4f4f5;
+  background-color: #f8fafc;
   font-weight: 600;
-  color: #09090b;
+  color: #0f172a;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .dark .markdown-body th {
   background-color: #18181b;
-  color: #fafafa;
+  color: #f1f5f9;
+}
+
+.markdown-body tr:nth-child(even) td {
+  background-color: #fcfcfd;
+}
+.dark .markdown-body tr:nth-child(even) td {
+  background-color: #141416;
 }
 
 /* Safe area padding for mobile notches */

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { marked } from 'marked';
 import 'highlight.js/styles/github-dark.css';
-import { User, Sparkles, Copy, Check, AlertCircle } from 'lucide-react';
+import { User, Sparkles, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Message } from '../types.ts';
 import { ToolAccordion } from './ToolAccordion.tsx';
 
@@ -38,7 +38,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
 
   if (isUser) {
     return (
-      <div className="flex justify-end my-4">
+      <div data-testid="user-card" className="flex justify-end my-4">
         <div className="flex gap-3 max-w-[85%] sm:max-w-[75%] items-start">
           <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md border border-indigo-500/30 text-sm leading-relaxed whitespace-pre-wrap font-sans">
             {message.content}
@@ -52,7 +52,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
   }
 
   return (
-    <div className="flex gap-3 my-4 items-start group">
+    <div data-testid="assistant-card" className="flex gap-3 my-4 items-start group">
       <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0 text-white shadow-lg shadow-indigo-500/20 mt-1">
         <Sparkles className="w-4 h-4" />
       </div>
@@ -104,20 +104,34 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
           </div>
         )}
 
-        {/* Main message text */}
+        {/* Main message text or Live Status */}
         {message.content ? (
           <div
             className="markdown-body"
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
-        ) : isStreaming ? (
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-sm py-2 italic font-mono">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            Анализирую проект и выполняю действия...
+        ) : isStreaming || message.status === 'streaming' ? (
+          <div className="flex items-center gap-2.5 text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm py-2 px-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 font-mono">
+            <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />
+            <span>
+              {message.steps && message.steps.some((s) => s.status === 'active')
+                ? 'Выполняю действия над проектом...'
+                : message.steps && message.steps.length > 0
+                ? 'Действия завершены, формирую ответ...'
+                : 'Анализирую проект и обдумываю решение...'}
+            </span>
           </div>
-        ) : null}
+        ) : message.steps && message.steps.length > 0 ? (
+          <div className="text-zinc-500 dark:text-zinc-400 text-xs font-mono py-1">
+            Действия успешно выполнены.
+          </div>
+        ) : (
+          <div className="text-zinc-400 dark:text-zinc-500 text-xs italic font-mono py-1">
+            Сессия была завершена без текстового вывода.
+          </div>
+        )}
 
-        {isStreaming && message.content && (
+        {(isStreaming || message.status === 'streaming') && message.content && (
           <span className="streaming-cursor" />
         )}
       </div>

@@ -215,16 +215,21 @@ export const App: React.FC = () => {
 
     // 2. Text delta
     const unsubDelta = wsClient.on('text_delta', (data) => {
-      if (data.conversationId !== selectedConversationId) return;
-
       setConversationDetail((prev) => {
         if (!prev) return prev;
         const messages = [...prev.messages];
-        const existingIdx = messages.findIndex((m) => m.id === data.messageId);
+        let existingIdx = messages.findIndex((m) => m.id === data.messageId);
+        if (existingIdx < 0) {
+          existingIdx = messages.findIndex(
+            (m) => m.role === 'assistant' && (m.id.startsWith('temp-asst-') || m.status === 'streaming')
+          );
+        }
 
         if (existingIdx >= 0) {
           messages[existingIdx] = {
             ...messages[existingIdx],
+            id: data.messageId,
+            conversation_id: data.conversationId,
             content: data.fullContent,
             status: 'streaming'
           };
@@ -246,15 +251,19 @@ export const App: React.FC = () => {
 
     // 3. Tool update
     const unsubTool = wsClient.on('tool_update', (data) => {
-      if (data.conversationId !== selectedConversationId) return;
-
       setConversationDetail((prev) => {
         if (!prev) return prev;
         const messages = [...prev.messages];
-        const existingIdx = messages.findIndex((m) => m.id === data.messageId);
+        let existingIdx = messages.findIndex((m) => m.id === data.messageId);
+        if (existingIdx < 0) {
+          existingIdx = messages.findIndex(
+            (m) => m.role === 'assistant' && (m.id.startsWith('temp-asst-') || m.status === 'streaming')
+          );
+        }
 
         if (existingIdx >= 0) {
-          const steps = [...(messages[existingIdx].steps || [])];
+          const target = messages[existingIdx];
+          const steps = [...(target.steps || [])];
           const stepIdx = steps.findIndex((s) => s.stepIndex === data.step.stepIndex);
 
           if (stepIdx >= 0) {
@@ -264,9 +273,22 @@ export const App: React.FC = () => {
           }
 
           messages[existingIdx] = {
-            ...messages[existingIdx],
+            ...target,
+            id: data.messageId,
+            conversation_id: data.conversationId,
+            status: 'streaming',
             steps
           };
+        } else {
+          messages.push({
+            id: data.messageId,
+            conversation_id: data.conversationId,
+            role: 'assistant',
+            content: '',
+            created_at: Date.now(),
+            status: 'streaming',
+            steps: [data.step]
+          });
         }
 
         return { ...prev, messages };
@@ -275,46 +297,53 @@ export const App: React.FC = () => {
 
     // 4. Done
     const unsubDone = wsClient.on('done', (data) => {
-      if (data.conversationId === selectedConversationId) {
-        setIsRunning(false);
-        setActiveAssistantMsgId(null);
+      setIsRunning(false);
+      setActiveAssistantMsgId(null);
 
-        setConversationDetail((prev) => {
-          if (!prev) return prev;
-          const messages = prev.messages.map((m) =>
-            m.id === data.messageId
-              ? { ...m, content: data.finalContent, status: 'done' as const }
-              : m
-          );
-          return { ...prev, isRunning: false, messages };
+      setConversationDetail((prev) => {
+        if (!prev) return prev;
+        const messages = prev.messages.map((m) => {
+          if (m.id === data.messageId || m.id.startsWith('temp-asst-')) {
+            return {
+              ...m,
+              id: data.messageId,
+              content: data.finalContent ?? m.content,
+              status: 'done' as const
+            };
+          }
+          return m;
         });
+        return { ...prev, isRunning: false, messages };
+      });
 
-        if (selectedProjectId) {
-          loadConversations(selectedProjectId);
-        }
+      if (selectedProjectId) {
+        loadConversations(selectedProjectId);
       }
     });
 
     // 5. Stopped
     const unsubStopped = wsClient.on('stopped', (data) => {
-      if (data.conversationId === selectedConversationId) {
-        setIsRunning(false);
-        setActiveAssistantMsgId(null);
+      setIsRunning(false);
+      setActiveAssistantMsgId(null);
 
-        if (data.securityAlert) {
-          setSecurityError(data.securityAlert);
-        }
-
-        setConversationDetail((prev) => {
-          if (!prev) return prev;
-          const messages = prev.messages.map((m) =>
-            m.id === data.messageId
-              ? { ...m, status: 'stopped' as const }
-              : m
-          );
-          return { ...prev, isRunning: false, messages };
-        });
+      if (data.securityAlert) {
+        setSecurityError(data.securityAlert);
       }
+
+      setConversationDetail((prev) => {
+        if (!prev) return prev;
+        const messages = prev.messages.map((m) => {
+          if (m.id === data.messageId || m.id.startsWith('temp-asst-')) {
+            return {
+              ...m,
+              id: data.messageId,
+              status: 'stopped' as const
+            };
+          }
+          return m;
+        });
+        return { ...prev, isRunning: false, messages };
+      });
     });
 
     // 6. Project status
@@ -375,17 +404,24 @@ export const App: React.FC = () => {
     if (!selectedProjectId) return;
     setSecurityError(null);
 
-    // Optimistically add user message to UI
+    // If no conversation currently selected, pre-allocate a clean UUID so we can subscribe immediately
+    const targetConvId = selectedConversationId || crypto.randomUUID();
     const tempUserMsgId = 'temp-' + Date.now();
     const tempAssistantMsgId = 'temp-asst-' + Date.now();
 
     setIsRunning(true);
     setActiveAssistantMsgId(tempAssistantMsgId);
 
+    // Immediately subscribe WebSocket before network request to prevent dropped early events
+    wsClient.subscribe(targetConvId);
+    if (!selectedConversationId) {
+      setSelectedConversationId(targetConvId);
+    }
+
     setConversationDetail((prev) => {
       const userMsg: Message = {
         id: tempUserMsgId,
-        conversation_id: selectedConversationId || '',
+        conversation_id: targetConvId,
         role: 'user',
         content: promptText,
         created_at: Date.now(),
@@ -394,7 +430,7 @@ export const App: React.FC = () => {
 
       const assistantMsg: Message = {
         id: tempAssistantMsgId,
-        conversation_id: selectedConversationId || '',
+        conversation_id: targetConvId,
         role: 'assistant',
         content: '',
         created_at: Date.now(),
@@ -402,9 +438,9 @@ export const App: React.FC = () => {
         steps: []
       };
 
-      if (!prev) {
+      if (!prev || prev.id !== targetConvId) {
         return {
-          id: selectedConversationId || 'pending',
+          id: targetConvId,
           project_id: selectedProjectId,
           title: promptText.slice(0, 30) + '...',
           created_at: Date.now(),
@@ -425,16 +461,36 @@ export const App: React.FC = () => {
     try {
       const res = await sendPrompt({
         projectId: selectedProjectId,
-        conversationId: selectedConversationId,
+        conversationId: targetConvId,
         prompt: promptText,
         mode,
         effort
       });
 
-      if (res.conversationId && res.conversationId !== selectedConversationId) {
-        setSelectedConversationId(res.conversationId);
-        loadConversations(selectedProjectId);
+      // Reconcile IDs immediately with server-assigned IDs
+      if (res.assistantMessageId) {
+        setActiveAssistantMsgId(res.assistantMessageId);
       }
+
+      setConversationDetail((prev) => {
+        if (!prev) return prev;
+        const messages = prev.messages.map((m) => {
+          if (m.id === tempUserMsgId && res.userMessageId) {
+            return { ...m, id: res.userMessageId, conversation_id: res.conversationId };
+          }
+          if (m.id === tempAssistantMsgId && res.assistantMessageId) {
+            return { ...m, id: res.assistantMessageId, conversation_id: res.conversationId };
+          }
+          return m;
+        });
+        return { ...prev, id: res.conversationId, messages };
+      });
+
+      if (res.conversationId && res.conversationId !== targetConvId) {
+        setSelectedConversationId(res.conversationId);
+        wsClient.subscribe(res.conversationId);
+      }
+      loadConversations(selectedProjectId);
     } catch (err: any) {
       console.error('Error sending prompt:', err);
       setIsRunning(false);
