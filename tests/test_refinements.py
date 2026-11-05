@@ -87,14 +87,15 @@ def run_tests():
         print("  ✓ 6. '/home/alex/apps' is completely removed from sidebar brand header")
 
         # -------------------------------------------------------------
-        # 3. VERIFY MODEL LIMITS IN BOTTOM-LEFT CORNER
+        # 3. VERIFY DYNAMIC MODEL QUOTAS (/usage) IN BOTTOM-LEFT CORNER
         # -------------------------------------------------------------
-        model_widget = sidebar.locator('text=Лимиты модели')
-        expect(model_widget).to_be_visible()
-        expect(sidebar.locator('text=Gemini 3.8 Flash')).to_be_visible()
-        expect(sidebar.locator('text=1,000,000 токенов')).to_be_visible()
-        expect(sidebar.locator('text=Pro Tier')).to_be_visible()
-        print("  ✓ 4. Model limits widget is prominently visible in bottom-left corner with Gemini 3.8 Flash, 1M context, and Pro Tier")
+        usage_widget = sidebar.locator('text=Лимиты (/usage)')
+        expect(usage_widget).to_be_visible()
+        expect(sidebar.locator('text=Gemini Models')).to_be_visible()
+        expect(sidebar.locator('text=5-часовой лимит:')).to_be_visible()
+        expect(sidebar.locator('text=Недельный лимит:')).to_be_visible()
+        expect(sidebar.locator('text=Claude & GPT')).to_be_visible()
+        print("  ✓ 4. Dynamic /usage quotas widget is visible in bottom-left corner with live 5h/weekly progress bars")
 
         # -------------------------------------------------------------
         # 4. VERIFY PROJECTS CONTAINER HEIGHT EXPANDED

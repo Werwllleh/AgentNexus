@@ -148,3 +148,7 @@ export async function stopConversation(conversationId: string): Promise<{ succes
     method: 'POST',
   });
 }
+
+export async function fetchUsage(force = false): Promise<any> {
+  return request(`/api/system/usage${force ? '?force=true' : ''}`);
+}

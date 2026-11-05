@@ -46,3 +46,24 @@ export interface ConversationDetail extends Conversation {
   activeAssistantMessageId?: string | null;
   messages: Message[];
 }
+
+export interface UsageBucket {
+  name: string;
+  percent: number;
+  fraction: number;
+  resetTime: string;
+  description?: string;
+}
+
+export interface UsageGroup {
+  name: string;
+  description?: string;
+  weekly: UsageBucket | null;
+  fiveHour: UsageBucket | null;
+}
+
+export interface UsageData {
+  groups: UsageGroup[];
+  updatedAt: number;
+  cached?: boolean;
+}

@@ -1,6 +1,8 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import util from 'node:util';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
@@ -266,6 +268,75 @@ app.post('/api/conversations/:id/stop', (req, res) => {
     res.json({ success: stopped });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Dynamic Quotas / Usage API from agy /usage
+const execFileAsync = util.promisify(execFile);
+let usageCache = null;
+let usageCacheTime = 0;
+const USAGE_CACHE_TTL_MS = 60 * 1000; // 60s cache
+
+app.get('/api/system/usage', async (req, res) => {
+  const force = req.query.force === 'true';
+  const now = Date.now();
+
+  if (!force && usageCache && now - usageCacheTime < USAGE_CACHE_TTL_MS) {
+    return res.json({ success: true, ...usageCache, cached: true });
+  }
+
+  try {
+    const { stdout } = await execFileAsync(
+      '/home/alex/.local/bin/agy',
+      ['-p', '/usage', '--output-format', 'json'],
+      { timeout: 15000, env: { ...process.env, TERM: 'dumb' } }
+    );
+
+    const parsed = JSON.parse(stdout);
+    const groupsRaw = parsed.command?.data?.groups || [];
+
+    const formattedGroups = groupsRaw.map((grp) => {
+      const buckets = grp.buckets || [];
+      const weeklyBucket = buckets.find((b) => b.window === 'weekly') || buckets[0];
+      const fiveHourBucket = buckets.find((b) => b.window === '5h') || buckets[1];
+
+      return {
+        name: grp.name,
+        description: grp.description,
+        weekly: weeklyBucket
+          ? {
+              name: weeklyBucket.name,
+              percent: Math.round((weeklyBucket.remaining_fraction ?? 1) * 100),
+              fraction: weeklyBucket.remaining_fraction,
+              resetTime: weeklyBucket.reset_time,
+              description: weeklyBucket.description
+            }
+          : null,
+        fiveHour: fiveHourBucket
+          ? {
+              name: fiveHourBucket.name,
+              percent: Math.round((fiveHourBucket.remaining_fraction ?? 1) * 100),
+              fraction: fiveHourBucket.remaining_fraction,
+              resetTime: fiveHourBucket.reset_time,
+              description: fiveHourBucket.description
+            }
+          : null
+      };
+    });
+
+    usageCache = {
+      groups: formattedGroups,
+      updatedAt: now
+    };
+    usageCacheTime = now;
+
+    res.json({ success: true, ...usageCache, cached: false });
+  } catch (err) {
+    console.error('Error fetching usage quotas:', err);
+    if (usageCache) {
+      return res.json({ success: true, ...usageCache, stale: true });
+    }
+    res.status(500).json({ error: 'Не удалось получить квоты: ' + err.message });
   }
 });
 

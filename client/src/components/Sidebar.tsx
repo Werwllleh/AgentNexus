@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FolderGit2,
   GitBranch,
@@ -11,10 +11,12 @@ import {
   Sun,
   Moon,
   X,
-  Cpu
+  Cpu,
+  RotateCw
 } from 'lucide-react';
-import { Project, Conversation } from '../types.ts';
+import { Project, Conversation, UsageData } from '../types.ts';
 import { Theme } from '../services/theme.ts';
+import { fetchUsage } from '../services/api.ts';
 
 interface SidebarProps {
   projects: Project[];
@@ -47,6 +49,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
 }) => {
+  const [usage, setUsage] = useState<UsageData | null>(null);
+  const [isUsageLoading, setIsUsageLoading] = useState(false);
+
+  const loadUsage = useCallback(async (force = false) => {
+    setIsUsageLoading(true);
+    try {
+      const data = await fetchUsage(force);
+      if (data && data.groups) {
+        setUsage(data);
+      }
+    } catch (err) {
+      console.error('Error fetching usage quotas:', err);
+    } finally {
+      setIsUsageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsage();
+    // Auto-refresh quotas every 3 minutes
+    const interval = setInterval(() => loadUsage(), 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadUsage]);
+
   const handleProjectClick = (id: string) => {
     onSelectProject(id);
     onCloseMobile?.();
@@ -256,37 +282,117 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Model Limits Widget (Bottom-Left Corner) */}
+        {/* Dynamic Model Quotas Widget (/usage) */}
         <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 text-xs shrink-0">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-200">
               <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Лимиты модели</span>
+              <span>Лимиты (/usage)</span>
             </div>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-              Pro Tier
-            </span>
+            <button
+              onClick={() => loadUsage(true)}
+              disabled={isUsageLoading}
+              className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+              title="Обновить остатки квот (/usage)"
+            >
+              <RotateCw className={`w-3 h-3 ${isUsageLoading ? 'animate-spin text-indigo-600' : ''}`} />
+            </button>
           </div>
 
-          <div className="space-y-1.5 font-mono text-[11px] text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-950 p-2 rounded-lg border border-zinc-200/80 dark:border-zinc-800">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Модель:</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-200">Gemini 3.8 Flash</span>
+          <div className="space-y-2.5 font-mono text-[11px] bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+            {/* Gemini Models group */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-[10px] uppercase tracking-wider">
+                  Gemini Models
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">Flash/Pro</span>
+              </div>
+
+              {/* 5-Hour Limit */}
+              <div className="space-y-0.5 mb-1.5">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-500">5-часовой лимит:</span>
+                  <span
+                    className={`font-semibold ${
+                      (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                    title={usage?.groups[0]?.fiveHour?.description || 'Сброс через 4 часа'}
+                  >
+                    {usage?.groups[0]?.fiveHour ? `${usage.groups[0].fiveHour.percent}%` : '86%'}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
+                        ? 'bg-emerald-500'
+                        : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${usage?.groups[0]?.fiveHour?.percent ?? 86}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Weekly Limit */}
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-500">Недельный лимит:</span>
+                  <span
+                    className={`font-semibold ${
+                      (usage?.groups[0]?.weekly?.percent ?? 40) > 50
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                    title={usage?.groups[0]?.weekly?.description || 'Сброс через 1 день'}
+                  >
+                    {usage?.groups[0]?.weekly ? `${usage.groups[0].weekly.percent}%` : '40%'}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (usage?.groups[0]?.weekly?.percent ?? 40) > 50
+                        ? 'bg-emerald-500'
+                        : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${usage?.groups[0]?.weekly?.percent ?? 40}%` }}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Контекст:</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-semibold">1,000,000 токенов</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Вывод (max):</span>
-              <span className="text-zinc-700 dark:text-zinc-300">64,000 токенов</span>
-            </div>
-            <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800/60 text-[10px]">
-              <span className="text-zinc-400 dark:text-zinc-500">Квота:</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                Без ограничений
-              </span>
+
+            {/* Claude & GPT models group */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-[10px] uppercase tracking-wider">
+                  Claude & GPT
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">Opus/Sonnet</span>
+              </div>
+
+              <div className="flex justify-between text-[10px]">
+                <span className="text-zinc-500">Остаток квоты:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {usage?.groups[1]?.weekly ? `${usage.groups[1].weekly.percent}%` : '100%'}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mt-0.5">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${usage?.groups[1]?.weekly?.percent ?? 100}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
