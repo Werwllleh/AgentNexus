@@ -1,0 +1,58 @@
+[
+  {
+    "id": "vpn",
+    "name": "VPN Service",
+    "path": "/home/alex/apps/vpn",
+    "description": "WERW VPN & 3X-UI / Xray infrastructure",
+    "category": "infrastructure"
+  },
+  {
+    "id": "autonote",
+    "name": "AutoNote",
+    "path": "/home/alex/apps/main/autonote",
+    "description": "AutoNote API and backend services",
+    "category": "apps"
+  },
+  {
+    "id": "bmw-diag",
+    "name": "BMW Diag / OpenBimmer",
+    "path": "/home/alex/apps/main/bmw-diag",
+    "description": "BMW Diagnostic & OpenBimmer platform",
+    "category": "apps"
+  },
+  {
+    "id": "ivs-technology",
+    "name": "IVS Technology",
+    "path": "/home/alex/apps/main/ivs-technology",
+    "description": "IVS Technology application",
+    "category": "apps"
+  },
+  {
+    "id": "master-sip",
+    "name": "Master-SIP",
+    "path": "/home/alex/apps/main/master-sip",
+    "description": "Master-SIP CRM / CMS platform",
+    "category": "apps"
+  },
+  {
+    "id": "resume",
+    "name": "Resume / Portfolio",
+    "path": "/home/alex/apps/main/resume",
+    "description": "Resume and portfolio website",
+    "category": "web"
+  },
+  {
+    "id": "vagclub21-union",
+    "name": "VAG Club 21",
+    "path": "/home/alex/apps/main/vagclub21-union",
+    "description": "VAG Club 21 community web application",
+    "category": "web"
+  },
+  {
+    "id": "project-management",
+    "name": "Gemini Hub / PM",
+    "path": "/home/alex/apps/project-management",
+    "description": "AI Project Management Hub (this app)",
+    "category": "tools"
+  }
+]
