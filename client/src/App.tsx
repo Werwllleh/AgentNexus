@@ -29,6 +29,7 @@ export const App: React.FC = () => {
   const [activeAssistantMsgId, setActiveAssistantMsgId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Theme sync
   useEffect(() => {
@@ -508,6 +509,8 @@ export const App: React.FC = () => {
         isConnected={isConnected}
         theme={theme}
         onToggleTheme={toggleTheme}
+        isOpenMobile={isMobileNavOpen}
+        onCloseMobile={() => setIsMobileNavOpen(false)}
       />
 
       <ChatArea
@@ -519,6 +522,7 @@ export const App: React.FC = () => {
         activeAssistantMessageId={activeAssistantMsgId}
         securityError={securityError}
         onDismissSecurityError={() => setSecurityError(null)}
+        onOpenMobile={() => setIsMobileNavOpen(true)}
       />
     </div>
   );

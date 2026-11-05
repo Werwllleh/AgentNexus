@@ -139,6 +139,17 @@
   color: #fafafa;
 }
 
+/* Safe area padding for mobile notches */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Pulsing cursor for streaming text */
 .streaming-cursor {
   display: inline-block;

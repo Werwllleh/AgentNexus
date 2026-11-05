@@ -58,7 +58,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   };
 
   return (
-    <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md p-4 transition-colors">
+    <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md p-3 sm:p-4 pb-safe transition-colors">
       {/* Quick shortcut chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-1 no-scrollbar text-xs">
         <button
@@ -101,17 +101,17 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           placeholder={
             isRunning
               ? 'Gemini выполняет задачу в фоне... (можно закрыть вкладку)'
-              : 'Задайте промпт для Gemini... (Enter для отправки, Shift+Enter перенос строки)'
+              : 'Задайте промпт для Gemini... (Enter для отправки)'
           }
           rows={1}
           disabled={disabled || isRunning}
-          className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 text-sm px-4 pt-3 pb-12 focus:outline-none resize-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 leading-relaxed font-sans"
+          className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 text-sm px-3.5 sm:px-4 pt-3 pb-12 focus:outline-none resize-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 leading-relaxed font-sans"
         />
 
         {/* Bottom controls inside the textarea box */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between pointer-events-none">
           {/* Options toggle & chips */}
-          <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="relative flex items-center gap-2 pointer-events-auto">
             <button
               type="button"
               onClick={() => setShowOptions(!showOptions)}
@@ -125,11 +125,11 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             </button>
 
             {showOptions && (
-              <div className="flex items-center gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-1 rounded-lg shadow-xl">
+              <div className="absolute bottom-9 left-0 z-30 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-2 rounded-xl shadow-xl backdrop-blur whitespace-nowrap min-w-[200px]">
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value)}
-                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-1 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
                 >
                   <option value="auto">Режим: Auto</option>
                   <option value="accept-edits">Режим: Accept Edits</option>
@@ -139,7 +139,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
                 <select
                   value={effort}
                   onChange={(e) => setEffort(e.target.value)}
-                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
+                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-1 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
                 >
                   <option value="low">Reasoning: Low</option>
                   <option value="medium">Reasoning: Medium</option>
