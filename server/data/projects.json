@@ -15,9 +15,9 @@
   },
   {
     "id": "bmw-diag",
-    "name": "BMW Diag / OpenBimmer",
+    "name": "BMW Diag / BimmerForge",
     "path": "/home/alex/apps/main/bmw-diag",
-    "description": "BMW Diagnostic & OpenBimmer platform",
+    "description": "BMW Diagnostic & BimmerForge platform",
     "category": "apps"
   },
   {
