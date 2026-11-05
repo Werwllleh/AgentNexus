@@ -48,11 +48,11 @@ async function request(url: string, options: RequestInit = {}): Promise<any> {
 }
 
 // Auth API
-export async function login(password: string): Promise<{ success: boolean; token: string }> {
+export async function login(loginInput: string, passwordInput: string): Promise<{ success: boolean; token: string }> {
   const res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ login: loginInput, password: passwordInput }),
     credentials: 'include',
   });
 

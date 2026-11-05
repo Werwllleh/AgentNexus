@@ -8,6 +8,7 @@ import { logSecurityIncident } from './guardrails.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const AUTH_FILE = path.resolve(__dirname, '../data/auth.json');
+const ENV_FILE = path.resolve(__dirname, '../../.env');
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_FAILED_ATTEMPTS = 5;
@@ -55,25 +56,53 @@ export function verifyPassword(password, salt, storedHash) {
   }
 }
 
+// Read credentials from .env
+function loadEnvCredentials() {
+  if (!fs.existsSync(ENV_FILE)) return null;
+  try {
+    const lines = fs.readFileSync(ENV_FILE, 'utf-8').split('\n');
+    const creds = {};
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const k = trimmed.slice(0, eqIdx).trim();
+        const v = trimmed.slice(eqIdx + 1).trim();
+        creds[k] = v;
+      }
+    }
+    if (creds.USER_LOGIN && creds.USER_PASSWORD) {
+      return {
+        login: creds.USER_LOGIN,
+        password: creds.USER_PASSWORD
+      };
+    }
+  } catch (err) {
+    console.error('Failed to read .env credentials:', err.message);
+  }
+  return null;
+}
+
 // Initialize master credentials if not exist
 export function initAuth() {
+  const envCreds = loadEnvCredentials();
+  if (envCreds) {
+    return; // Initialized via .env
+  }
+
   if (fs.existsSync(AUTH_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
       if (data.hash && data.salt) {
-        return; // Already initialized
+        return;
       }
     } catch { /* proceed to re-init */ }
   }
 
-  // Generate a strong default password
-  const defaultPassword = crypto.randomBytes(9).toString('base64url'); // ~12 characters url-safe
+  const defaultPassword = crypto.randomBytes(9).toString('base64url');
   setPassword(defaultPassword);
-  console.log('================================================================');
-  console.log(' [SECURITY] Master Password initialized for Gemini Hub:');
-  console.log(`   Password: ${defaultPassword}`);
-  console.log('   Change it anytime via: npm run set-password <new_password>');
-  console.log('================================================================');
+  console.log(' [SECURITY] Master Credentials initialized');
 }
 
 export function setPassword(newPassword) {
@@ -97,8 +126,8 @@ export function getClientIp(req) {
   return req.socket?.remoteAddress || req.ip || 'unknown';
 }
 
-// Login attempt handler with brute force protection
-export function attemptLogin(password, ip, userAgent) {
+// Login attempt handler with login + password verification and rate limiting
+export function attemptLogin(loginInput, passwordInput, ip, userAgent) {
   cleanExpiredSessions();
 
   const now = Date.now();
@@ -109,7 +138,7 @@ export function attemptLogin(password, ip, userAgent) {
     const minutesLeft = Math.ceil((attemptInfo.lockedUntil - now) / 60000);
     logSecurityIncident({
       ip,
-      userId: 'anonymous',
+      userId: loginInput || 'anonymous',
       prompt: 'Blocked login attempt during active lockout',
       category: 'brute_force_lockout',
       reason: `Превышено количество попыток входа. Блокировка еще ${minutesLeft} мин.`
@@ -121,12 +150,22 @@ export function attemptLogin(password, ip, userAgent) {
     };
   }
 
-  if (!fs.existsSync(AUTH_FILE)) {
-    initAuth();
-  }
+  const loginStr = (loginInput || '').trim();
+  const passStr = passwordInput || '';
 
-  const authData = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
-  const isValid = verifyPassword(password, authData.salt, authData.hash);
+  const envCreds = loadEnvCredentials();
+  let isValid = false;
+
+  if (envCreds) {
+    const loginMatches = loginStr === envCreds.login;
+    const passBuf = Buffer.from(passStr);
+    const expBuf = Buffer.from(envCreds.password);
+    const passMatches = passBuf.length === expBuf.length && crypto.timingSafeEqual(passBuf, expBuf);
+    isValid = loginMatches && passMatches;
+  } else if (fs.existsSync(AUTH_FILE)) {
+    const authData = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'));
+    isValid = (loginStr === 'admin') && verifyPassword(passStr, authData.salt, authData.hash);
+  }
 
   if (!isValid) {
     attemptInfo.count += 1;
@@ -134,7 +173,7 @@ export function attemptLogin(password, ip, userAgent) {
       attemptInfo.lockedUntil = now + LOCKOUT_DURATION_MS;
       logSecurityIncident({
         ip,
-        userId: 'anonymous',
+        userId: loginStr || 'anonymous',
         prompt: `Failed login attempt #${attemptInfo.count}`,
         category: 'brute_force_detected',
         reason: 'Превышен лимит 5 неверных попыток. IP заблокирован на 15 минут'
@@ -143,7 +182,7 @@ export function attemptLogin(password, ip, userAgent) {
       return {
         success: false,
         locked: true,
-        error: 'Неверный пароль. Превышен лимит попыток. Доступ заблокирован на 15 минут.'
+        error: 'Неверный логин или пароль. Доступ заблокирован на 15 минут.'
       };
     }
 
@@ -152,11 +191,11 @@ export function attemptLogin(password, ip, userAgent) {
       success: false,
       locked: false,
       attemptsRemaining: MAX_FAILED_ATTEMPTS - attemptInfo.count,
-      error: `Неверный пароль. Осталось попыток: ${MAX_FAILED_ATTEMPTS - attemptInfo.count}`
+      error: `Неверный логин или пароль. Осталось попыток: ${MAX_FAILED_ATTEMPTS - attemptInfo.count}`
     };
   }
 
-  // Password is correct -> reset failure tracker
+  // Success -> reset failure tracker
   loginAttempts.delete(ip);
 
   // Generate session token
@@ -165,14 +204,14 @@ export function attemptLogin(password, ip, userAgent) {
 
   db.prepare(`
     INSERT INTO sessions (token, user_id, created_at, expires_at, ip, user_agent)
-    VALUES (?, 'admin', ?, ?, ?, ?)
-  `).run(token, now, expiresAt, ip, userAgent || '');
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(token, loginStr, now, expiresAt, ip, userAgent || '');
 
   return {
     success: true,
     token,
     expiresAt,
-    user: { id: 'admin', role: 'admin' }
+    user: { id: loginStr, role: 'admin' }
   };
 }
 
@@ -200,10 +239,8 @@ export function revokeSession(token) {
 
 // Express Auth Middleware
 export function requireAuth(req, res, next) {
-  // Allow OPTIONS preflight
   if (req.method === 'OPTIONS') return next();
 
-  // Extract token from Header or Cookie or Query
   let token = null;
 
   const authHeader = req.headers.authorization;

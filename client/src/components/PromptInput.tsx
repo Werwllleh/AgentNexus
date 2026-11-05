@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowUp,
   Square,
-  Sparkles,
   SlidersHorizontal,
   Compass,
   FileSearch,
@@ -59,41 +58,41 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   };
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950/90 backdrop-blur-md p-4">
+    <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md p-4 transition-colors">
       {/* Quick shortcut chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-1 no-scrollbar text-xs">
         <button
           onClick={() => handleChipClick('/plan ')}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 transition shrink-0 cursor-pointer"
         >
-          <Compass className="w-3 h-3 text-indigo-400" />
+          <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
           <span>/plan</span>
         </button>
         <button
           onClick={() => handleChipClick('Проверь git status и покажи текущие изменения')}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 transition shrink-0 cursor-pointer"
         >
-          <GitBranch className="w-3 h-3 text-emerald-400" />
+          <GitBranch className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
           <span>Git status</span>
         </button>
         <button
           onClick={() => handleChipClick('Запусти тесты проекта и исправь ошибки, если они есть')}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 transition shrink-0 cursor-pointer"
         >
-          <Play className="w-3 h-3 text-amber-400" />
+          <Play className="w-3 h-3 text-amber-600 dark:text-amber-400" />
           <span>Запусти тесты</span>
         </button>
         <button
           onClick={() => handleChipClick('Изучи архитектуру проекта и опиши ключевые модули')}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 transition shrink-0 cursor-pointer"
         >
-          <FileSearch className="w-3 h-3 text-sky-400" />
+          <FileSearch className="w-3 h-3 text-sky-600 dark:text-sky-400" />
           <span>Объясни архитектуру</span>
         </button>
       </div>
 
       {/* Main input card */}
-      <div className="relative border border-zinc-800 bg-zinc-900/60 rounded-xl shadow-inner focus-within:border-indigo-500/60 transition-colors">
+      <div className="relative border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl shadow-xs focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all">
         <textarea
           ref={textareaRef}
           value={prompt}
@@ -106,7 +105,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           }
           rows={1}
           disabled={disabled || isRunning}
-          className="w-full bg-transparent text-zinc-100 text-sm px-4 pt-3 pb-12 focus:outline-none resize-none placeholder:text-zinc-500 leading-relaxed font-sans"
+          className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 text-sm px-4 pt-3 pb-12 focus:outline-none resize-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 leading-relaxed font-sans"
         />
 
         {/* Bottom controls inside the textarea box */}
@@ -116,21 +115,21 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             <button
               type="button"
               onClick={() => setShowOptions(!showOptions)}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-700/80 text-[11px] text-zinc-400 hover:text-zinc-200 border border-zinc-700/50 transition"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-[11px] text-zinc-700 dark:text-zinc-300 border border-zinc-300/60 dark:border-zinc-700/50 transition cursor-pointer"
               title="Параметры выполнения"
             >
-              <SlidersHorizontal className="w-3 h-3 text-indigo-400" />
+              <SlidersHorizontal className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
               <span>
                 {mode} • {effort}
               </span>
             </button>
 
             {showOptions && (
-              <div className="flex items-center gap-2 text-xs bg-zinc-900 border border-zinc-700 p-1 rounded-lg shadow-xl">
+              <div className="flex items-center gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-1 rounded-lg shadow-xl">
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value)}
-                  className="bg-zinc-800 text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-700 focus:outline-none"
+                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
                 >
                   <option value="auto">Режим: Auto</option>
                   <option value="accept-edits">Режим: Accept Edits</option>
@@ -140,7 +139,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
                 <select
                   value={effort}
                   onChange={(e) => setEffort(e.target.value)}
-                  className="bg-zinc-800 text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-700 focus:outline-none"
+                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 text-[11px] rounded px-2 py-0.5 border border-zinc-200 dark:border-zinc-700 focus:outline-none"
                 >
                   <option value="low">Reasoning: Low</option>
                   <option value="medium">Reasoning: Medium</option>
@@ -157,7 +156,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
               <button
                 type="button"
                 onClick={onStop}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium shadow-md shadow-rose-600/30 transition animate-pulse"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium shadow-md shadow-rose-600/30 transition animate-pulse cursor-pointer"
                 title="Остановить выполнение"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
@@ -168,7 +167,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!prompt.trim() || disabled}
-                className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white shadow-md shadow-indigo-600/20 transition cursor-pointer disabled:cursor-not-allowed"
+                className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600 text-white shadow-md shadow-indigo-600/20 transition cursor-pointer disabled:cursor-not-allowed"
                 title="Отправить (Enter)"
               >
                 <ArrowUp className="w-4 h-4" />

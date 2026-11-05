@@ -11,11 +11,13 @@ import {
   logout
 } from './services/api.ts';
 import { wsClient } from './services/websocket.ts';
+import { Theme, getInitialTheme, applyTheme } from './services/theme.ts';
 import { Sidebar } from './components/Sidebar.tsx';
 import { ChatArea } from './components/ChatArea.tsx';
 import { LoginView } from './components/LoginView.tsx';
 
 export const App: React.FC = () => {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -26,6 +28,15 @@ export const App: React.FC = () => {
   const [activeAssistantMsgId, setActiveAssistantMsgId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
+
+  // Theme sync
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   // Check auth state on start
   const verifyAuth = useCallback(async () => {
@@ -438,20 +449,26 @@ export const App: React.FC = () => {
 
   if (isAuthenticated === null) {
     return (
-      <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center font-mono text-zinc-500 text-xs">
+      <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center font-mono text-zinc-500 text-xs">
         Проверка авторизации...
       </div>
     );
   }
 
   if (isAuthenticated === false) {
-    return <LoginView onSuccess={() => setIsAuthenticated(true)} />;
+    return (
+      <LoginView
+        onSuccess={() => setIsAuthenticated(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-950 overflow-hidden font-sans">
+    <div className="flex h-screen w-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans transition-colors duration-200">
       <Sidebar
         projects={projects}
         selectedProjectId={selectedProjectId}
@@ -462,6 +479,8 @@ export const App: React.FC = () => {
         onNewConversation={handleNewConversation}
         onLogout={handleLogout}
         isConnected={isConnected}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <ChatArea

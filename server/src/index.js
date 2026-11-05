@@ -50,15 +50,15 @@ app.use(express.json());
 
 // Public Auth Endpoints
 app.post('/api/auth/login', (req, res) => {
-  const { password } = req.body || {};
-  if (!password || typeof password !== 'string') {
-    return res.status(400).json({ error: 'Пароль обязателен' });
+  const { login, password } = req.body || {};
+  if (!login || !password) {
+    return res.status(400).json({ error: 'Логин и пароль обязательны' });
   }
 
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || '';
 
-  const result = attemptLogin(password, ip, userAgent);
+  const result = attemptLogin(login, password, ip, userAgent);
   if (!result.success) {
     const statusCode = result.locked ? 429 : 401;
     return res.status(statusCode).json({ error: result.error });
