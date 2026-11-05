@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const AUTH_FILE = path.resolve(__dirname, '../data/auth.json');
 const ENV_FILE = path.resolve(__dirname, '../../.env');
 
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days sliding session
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -215,20 +215,57 @@ export function attemptLogin(loginInput, passwordInput, ip, userAgent) {
   };
 }
 
-export function validateSession(token) {
+export function validateSession(token, autoExtend = true) {
   if (!token || typeof token !== 'string') return null;
   const session = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
   if (!session) return null;
 
-  if (session.expires_at < Date.now()) {
+  const now = Date.now();
+  if (session.expires_at < now) {
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
     return null;
+  }
+
+  // Sliding session renewal: if less than 28 days left, extend by 30 days
+  let wasRefreshed = false;
+  if (autoExtend && session.expires_at - now < 28 * 24 * 60 * 60 * 1000) {
+    const newExpires = now + SESSION_TTL_MS;
+    try {
+      db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(newExpires, token);
+      session.expires_at = newExpires;
+      wasRefreshed = true;
+    } catch (e) {
+      console.warn('Failed to update session expiration:', e.message);
+    }
   }
 
   return {
     userId: session.user_id,
     token: session.token,
-    expiresAt: session.expires_at
+    expiresAt: session.expires_at,
+    wasRefreshed
+  };
+}
+
+export function refreshSession(token) {
+  if (!token || typeof token !== 'string') return null;
+  const session = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
+  if (!session) return null;
+
+  const now = Date.now();
+  if (session.expires_at < now) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    return null;
+  }
+
+  const newExpires = now + SESSION_TTL_MS;
+  db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(newExpires, token);
+
+  return {
+    success: true,
+    userId: session.user_id,
+    token: session.token,
+    expiresAt: newExpires
   };
 }
 
@@ -262,11 +299,22 @@ export function requireAuth(req, res, next) {
     token = String(req.query.token);
   }
 
-  const session = validateSession(token);
+  const session = validateSession(token, true);
   if (!session) {
     return res.status(401).json({
       error: 'Требуется авторизация',
       code: 'UNAUTHORIZED'
+    });
+  }
+
+  // If session was extended via sliding window, update cookie
+  if (session.wasRefreshed) {
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie('pm_session', session.token, {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: 'lax',
+      maxAge: SESSION_TTL_MS
     });
   }
 

@@ -93,6 +93,15 @@ export async function logout(): Promise<void> {
   }
 }
 
+export async function refreshSession(): Promise<boolean> {
+  try {
+    const res = await request('/api/auth/refresh', { method: 'POST' });
+    return !!res.success;
+  } catch {
+    return false;
+  }
+}
+
 // Protected App API
 export async function fetchProjects(): Promise<Project[]> {
   return request('/api/projects');

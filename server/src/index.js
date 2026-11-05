@@ -12,6 +12,7 @@ import {
   attemptLogin,
   requireAuth,
   validateSession,
+  refreshSession,
   revokeSession,
   getClientIp
 } from './auth.js';
@@ -131,6 +132,26 @@ app.post('/api/auth/logout', (req, res) => {
   }
   res.clearCookie('pm_session');
   res.json({ success: true });
+});
+
+app.post('/api/auth/refresh', requireAuth, (req, res) => {
+  const result = refreshSession(req.user.token);
+  if (!result) {
+    return res.status(401).json({ error: 'Сессия недействительна' });
+  }
+
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.cookie('pm_session', result.token, {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  });
+
+  res.json({
+    success: true,
+    expiresAt: result.expiresAt
+  });
 });
 
 // All routes below require valid authentication

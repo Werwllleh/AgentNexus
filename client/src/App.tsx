@@ -8,6 +8,7 @@ import {
   sendPrompt,
   stopConversation,
   checkAuth,
+  refreshSession,
   logout
 } from './services/api.ts';
 import { wsClient } from './services/websocket.ts';
@@ -57,6 +58,32 @@ export const App: React.FC = () => {
       window.removeEventListener('auth_unauthorized', handleUnauthorized);
     };
   }, [verifyAuth]);
+
+  // Silent sliding session background refresher
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleActive = () => {
+      refreshSession();
+    };
+
+    // Auto-refresh timer every 6 hours
+    const refreshTimer = setInterval(() => {
+      refreshSession();
+    }, 6 * 60 * 60 * 1000);
+
+    window.addEventListener('focus', handleActive);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        refreshSession();
+      }
+    });
+
+    return () => {
+      clearInterval(refreshTimer);
+      window.removeEventListener('focus', handleActive);
+    };
+  }, [isAuthenticated]);
 
   // Load projects
   const loadProjects = useCallback(async () => {
