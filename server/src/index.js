@@ -33,6 +33,7 @@ import {
   getGitStatus,
   addFolderAsProject
 } from './fileExplorer.js';
+import { versionManager } from './versionManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,7 +59,17 @@ app.use((req, res, next) => {
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Public Auth Endpoints
+// Public Health & Auth Endpoints
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    app: 'AgentNexus',
+    version: versionManager.getPackageVersion(),
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) {
@@ -398,6 +409,33 @@ app.get('/api/system/usage', async (req, res) => {
     }
     res.status(500).json({ error: 'Не удалось получить квоты: ' + err.message });
   }
+});
+
+// Version & Update Center API (3X-UI Style)
+app.get('/api/system/version', requireAuth, async (req, res) => {
+  try {
+    const force = req.query.force === 'true';
+    const versionInfo = await versionManager.checkForUpdates(force);
+    res.json({ success: true, ...versionInfo });
+  } catch (err) {
+    console.error('[API] Error checking version:', err);
+    res.status(500).json({ error: 'Ошибка проверки версии: ' + err.message });
+  }
+});
+
+app.post('/api/system/update', requireAuth, async (req, res) => {
+  try {
+    const { branch = 'master' } = req.body || {};
+    const result = await versionManager.performUpdate({ branch });
+    res.json(result);
+  } catch (err) {
+    console.error('[API] Error performing update:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/system/update-status', requireAuth, (req, res) => {
+  res.json(versionManager.getUpdateStatus());
 });
 
 // WebSocket Connection handling with Authentication

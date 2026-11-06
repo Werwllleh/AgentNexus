@@ -5,7 +5,9 @@ import {
   AIEngine,
   FsBrowseResponse,
   FileContentResponse,
-  GitStatusResponse
+  GitStatusResponse,
+  VersionInfo,
+  UpdateResult
 } from '../types.ts';
 
 const BASE_URL = '';
@@ -195,4 +197,33 @@ export async function addProjectFolder(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+}
+
+// Versioning & Update Center API (3X-UI Style)
+export async function fetchVersionInfo(force = false): Promise<VersionInfo> {
+  return request(`/api/system/version${force ? '?force=true' : ''}`);
+}
+
+export async function triggerSystemUpdate(branch = 'master'): Promise<UpdateResult> {
+  return request('/api/system/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branch }),
+  });
+}
+
+export async function fetchUpdateStatus(): Promise<{ isUpdating: boolean; logs: any[] }> {
+  return request('/api/system/update-status');
+}
+
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/health`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3000)
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

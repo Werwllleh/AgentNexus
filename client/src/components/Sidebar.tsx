@@ -15,7 +15,7 @@ import {
   Cpu,
   RotateCw
 } from 'lucide-react';
-import { Project, Conversation, UsageData } from '../types.ts';
+import { Project, Conversation, UsageData, VersionInfo } from '../types.ts';
 import { Theme } from '../services/theme.ts';
 import { fetchUsage } from '../services/api.ts';
 
@@ -34,6 +34,8 @@ interface SidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
   onOpenDirectoryPicker?: () => void;
+  versionInfo?: VersionInfo | null;
+  onOpenUpdateModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -51,6 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   onOpenDirectoryPicker,
+  versionInfo,
+  onOpenUpdateModal,
 }) => {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
@@ -119,6 +123,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
                   STUDIO
                 </span>
+                <button
+                  onClick={onOpenUpdateModal}
+                  data-testid="header-version-badge"
+                  className="text-[10px] font-mono px-1 py-0.5 rounded text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer flex items-center gap-1"
+                  title="Центр обновлений (3X-UI Style)"
+                >
+                  v{versionInfo?.currentVersion || '2.0.0'}
+                  {versionInfo?.hasUpdate && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  )}
+                </button>
               </h1>
             </div>
           </div>
@@ -412,11 +427,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Footer / Multiplexer Status & Logout */}
-        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950 text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center justify-between shrink-0">
+        {/* Footer / Version, Multiplexer Status & Logout */}
+        <div className="p-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950 text-xs text-zinc-500 dark:text-zinc-400 font-mono flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Daemon: Active</span>
+            <button
+              onClick={onOpenUpdateModal}
+              data-testid="version-btn"
+              className="flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 transition cursor-pointer"
+              title="Открыть центр обновлений (3X-UI Style)"
+            >
+              <span>v{versionInfo?.currentVersion || '2.0.0'}</span>
+              {versionInfo?.hasUpdate ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Доступно обновление" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Актуальная версия" />
+              )}
+            </button>
+            <span className="text-zinc-300 dark:text-zinc-700">|</span>
+            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
+              <Activity className="w-3 h-3 text-indigo-500" />
+              <span>Daemon</span>
+            </div>
           </div>
           <button
             onClick={onLogout}

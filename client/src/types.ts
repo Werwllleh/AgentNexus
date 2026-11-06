@@ -119,3 +119,42 @@ export interface FileContentResponse {
   extension: string;
   content: string;
 }
+
+export interface VersionInfo {
+  success: boolean;
+  currentVersion: string;
+  currentCommit: string;
+  currentCommitFull: string;
+  branch: string;
+  commitDate: string;
+  commitMessage: string;
+  remoteCommit: string;
+  remoteCommitFull: string;
+  hasUpdate: boolean;
+  commitsBehind: number;
+  latestRelease?: {
+    tagName: string;
+    name: string;
+    body: string;
+    publishedAt: string;
+    htmlUrl: string;
+  } | null;
+  checkSource: string;
+  isUpdating: boolean;
+  lastChecked: string;
+}
+
+export interface UpdateLogEntry {
+  timestamp: string;
+  step: string;
+  message: string;
+  status: 'in_progress' | 'done' | 'failed';
+}
+
+export interface UpdateResult {
+  success: boolean;
+  message: string;
+  logs: UpdateLogEntry[];
+  backupFolder?: string;
+  error?: string;
+}

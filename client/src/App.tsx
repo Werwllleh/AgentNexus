@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Project, Conversation, ConversationDetail, Message, Step } from './types.ts';
+import { Project, Conversation, ConversationDetail, Message, Step, VersionInfo } from './types.ts';
 import {
   fetchProjects,
   fetchConversations,
@@ -9,7 +9,8 @@ import {
   stopConversation,
   checkAuth,
   refreshSession,
-  logout
+  logout,
+  fetchVersionInfo
 } from './services/api.ts';
 import { wsClient } from './services/websocket.ts';
 import { Theme, getInitialTheme, applyTheme } from './services/theme.ts';
@@ -18,6 +19,7 @@ import { ChatArea } from './components/ChatArea.tsx';
 import { LoginView } from './components/LoginView.tsx';
 import { DirectoryPickerModal } from './components/DirectoryPickerModal.tsx';
 import { ProjectFileExplorerModal } from './components/ProjectFileExplorerModal.tsx';
+import { UpdateModal } from './components/UpdateModal.tsx';
 
 export const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
@@ -34,6 +36,8 @@ export const App: React.FC = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isDirectoryPickerOpen, setIsDirectoryPickerOpen] = useState(false);
   const [isProjectFilesOpen, setIsProjectFilesOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
 
   // Theme sync
   useEffect(() => {
@@ -88,6 +92,13 @@ export const App: React.FC = () => {
       clearInterval(refreshTimer);
       window.removeEventListener('focus', handleActive);
     };
+  }, [isAuthenticated]);
+
+  // Load version info once authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchVersionInfo().then(setVersionInfo).catch(() => {});
+    }
   }, [isAuthenticated]);
 
   // Load projects
@@ -585,6 +596,8 @@ export const App: React.FC = () => {
         isOpenMobile={isMobileNavOpen}
         onCloseMobile={() => setIsMobileNavOpen(false)}
         onOpenDirectoryPicker={() => setIsDirectoryPickerOpen(true)}
+        versionInfo={versionInfo}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       <ChatArea
@@ -610,6 +623,14 @@ export const App: React.FC = () => {
         project={selectedProject}
         isOpen={isProjectFilesOpen}
         onClose={() => setIsProjectFilesOpen(false)}
+      />
+
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onVersionUpdated={() => {
+          fetchVersionInfo(true).then(setVersionInfo).catch(() => {});
+        }}
       />
     </div>
   );
