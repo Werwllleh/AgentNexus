@@ -56,6 +56,10 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const handleStartUpdate = async () => {
     if (isUpdating) return;
+    if (!versionInfo?.hasUpdate) {
+      setError('У вас уже установлена актуальная версия. Обновление не требуется.');
+      return;
+    }
     setIsUpdating(true);
     setError(null);
     setLogs([
@@ -209,6 +213,31 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             </div>
           </div>
 
+          {/* Status Banner: Up to date or Update available */}
+          {!versionInfo?.hasUpdate && !isUpdating && (
+            <div
+              data-testid="up-to-date-banner"
+              className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>
+                У вас установлена последняя актуальная версия (коммит <code className="font-semibold">{versionInfo?.currentCommit}</code>). Обновление не требуется.
+              </span>
+            </div>
+          )}
+
+          {versionInfo?.hasUpdate && !isUpdating && (
+            <div
+              data-testid="update-available-banner"
+              className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300"
+            >
+              <ArrowUpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                Доступна новая версия в репозитории (коммит <code className="font-semibold">{versionInfo.remoteCommit}</code>). Нажмите кнопку «Обновить сейчас».
+              </span>
+            </div>
+          )}
+
           {/* Latest Commit Message or Release Details */}
           {versionInfo?.commitMessage && (
             <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200/80 dark:border-zinc-800 text-xs">
@@ -287,24 +316,36 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             >
               Закрыть
             </button>
-            <button
-              onClick={handleStartUpdate}
-              disabled={isUpdating}
-              data-testid="start-update-btn"
-              className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-medium shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {isUpdating ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Обновление...</span>
-                </>
-              ) : (
-                <>
-                  <ArrowUpCircle className="w-3.5 h-3.5" />
-                  <span>Обновить сейчас</span>
-                </>
-              )}
-            </button>
+            {versionInfo?.hasUpdate ? (
+              <button
+                onClick={handleStartUpdate}
+                disabled={isUpdating}
+                data-testid="start-update-btn"
+                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-medium shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isUpdating ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Обновление...</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUpCircle className="w-3.5 h-3.5" />
+                    <span>Обновить сейчас</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                disabled
+                data-testid="start-update-btn"
+                className="px-4 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700/60 flex items-center gap-1.5 cursor-not-allowed select-none"
+                title="У вас уже установлена последняя актуальная версия"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Актуальная версия</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

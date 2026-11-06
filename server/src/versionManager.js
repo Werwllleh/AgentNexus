@@ -189,9 +189,15 @@ class VersionManager {
   /**
    * Performs the full one-click update process
    */
-  async performUpdate({ branch = 'master' } = {}) {
+  async performUpdate({ branch = 'master', force = false } = {}) {
     if (this.isUpdating) {
       throw new Error('Процесс обновления уже запущен.');
+    }
+
+    // Verify whether an update is actually available
+    const check = await this.checkForUpdates(true);
+    if (!check.hasUpdate && !force) {
+      throw new Error('У вас уже установлена актуальная версия. Обновлений нет.');
     }
 
     this.isUpdating = true;

@@ -425,12 +425,12 @@ app.get('/api/system/version', requireAuth, async (req, res) => {
 
 app.post('/api/system/update', requireAuth, async (req, res) => {
   try {
-    const { branch = 'master' } = req.body || {};
-    const result = await versionManager.performUpdate({ branch });
+    const { branch = 'master', force = false } = req.body || {};
+    const result = await versionManager.performUpdate({ branch, force });
     res.json(result);
   } catch (err) {
     console.error('[API] Error performing update:', err);
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 

@@ -79,6 +79,21 @@ def test_version_api(base_url, login, password):
         assert e.code == 401
         print("  ✓ POST /api/system/update correctly rejected unauthenticated request (401 Unauthorized)")
 
+    # 5. Prevent update when already up-to-date
+    try:
+        req = urllib.request.Request(
+            f"{base_url}/api/system/update",
+            data=json.dumps({"branch": "master"}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+        )
+        urllib.request.urlopen(req)
+        assert False, "Update when already up-to-date must fail with 400!"
+    except urllib.error.HTTPError as e:
+        assert e.code == 400
+        err_body = json.loads(e.read())
+        assert "актуальная версия" in err_body.get("error", "").lower()
+        print(f"  ✓ POST /api/system/update blocked update when already up-to-date (400: '{err_body.get('error')}')")
+
 def main():
     base_url = "http://127.0.0.1:3050"
     login, password = load_credentials()
@@ -124,12 +139,22 @@ def main():
         expect(modal.locator('text=Удаленный статус')).to_be_visible()
         expect(modal.locator('text=Резервная копия')).to_be_visible()
         expect(modal.locator('button:has-text("Проверить обновления")')).to_be_visible()
-        expect(modal.locator('[data-testid="start-update-btn"]')).to_be_visible()
-        print("  ✓ Verified modal cards (Local Version, Remote Status, Backup Notice, Action Buttons)")
+        
+        # Verify that when already up-to-date, update is blocked:
+        up_to_date_banner = modal.locator('[data-testid="up-to-date-banner"]')
+        expect(up_to_date_banner).to_be_visible()
+        expect(up_to_date_banner).to_contain_text("У вас установлена последняя актуальная версия")
+        print("  ✓ Verified 'У вас установлена последняя актуальная версия' banner is visible")
 
-        # Verify '3X-UI' is NOT displayed in the UI modal
-        assert '3X-UI' not in modal.text_content(), "3X-UI must not be displayed in update modal"
-        print("  ✓ Confirmed '3X-UI' is NOT present in UI")
+        update_btn = modal.locator('[data-testid="start-update-btn"]')
+        expect(update_btn).to_be_visible()
+        assert update_btn.is_disabled(), "Start update button MUST be disabled when up-to-date!"
+        expect(update_btn).to_contain_text("Актуальная версия")
+        print("  ✓ Verified update button is DISABLED with label 'Актуальная версия' (updates prohibited)")
+
+        # Verify '3X-UI' is NOT displayed in the UI modal header or badges
+        assert '3X-UI' not in modal.locator('h2').text_content(), "3X-UI must not be displayed in update modal header"
+        print("  ✓ Confirmed '3X-UI' is NOT present in modal header")
 
         # Test Re-check button
         modal.locator('button:has-text("Проверить обновления")').click()
