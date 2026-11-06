@@ -368,6 +368,10 @@ function handleStreamEvent(event, session) {
         durationSeconds: su.duration_seconds || null
       };
 
+      if (su.tool_info?.parameters) {
+        existingStep.toolParams = su.tool_info.parameters;
+      }
+
       if (su.state === 'DONE') {
         existingStep.status = 'done';
         if (su.tool_info?.output) existingStep.toolOutput = su.tool_info.output;

@@ -154,12 +154,34 @@ export const dbRepo = {
   getMessagesByConversation(conversationId) {
     const messages = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC').all(conversationId);
     for (const msg of messages) {
-      msg.steps = db.prepare('SELECT * FROM steps WHERE message_id = ? ORDER BY step_index ASC').all(msg.id);
-      for (const step of msg.steps) {
+      const rawSteps = db.prepare('SELECT * FROM steps WHERE message_id = ? ORDER BY step_index ASC').all(msg.id);
+      msg.steps = rawSteps.map((step) => {
+        let parsedParams = null;
         if (step.tool_params) {
-          try { step.tool_params = JSON.parse(step.tool_params); } catch { /* ignore */ }
+          try {
+            parsedParams = JSON.parse(step.tool_params);
+          } catch {
+            parsedParams = step.tool_params;
+          }
         }
-      }
+        return {
+          id: step.id,
+          stepIndex: step.step_index,
+          stepType: step.step_type,
+          toolName: step.tool_name,
+          toolParams: parsedParams,
+          toolOutput: step.tool_output,
+          status: step.status,
+          durationSeconds: step.duration_seconds,
+          // Backward compatibility aliases:
+          step_index: step.step_index,
+          step_type: step.step_type,
+          tool_name: step.tool_name,
+          tool_params: parsedParams,
+          tool_output: step.tool_output,
+          duration_seconds: step.duration_seconds
+        };
+      });
     }
     return messages;
   },
@@ -179,10 +201,11 @@ export const dbRepo = {
       db.prepare(`
         UPDATE steps
         SET status = ?,
+            tool_params = COALESCE(?, tool_params),
             tool_output = COALESCE(?, tool_output),
             duration_seconds = COALESCE(?, duration_seconds)
         WHERE id = ?
-      `).run(status || 'done', toolOutput || null, durationSeconds || null, id);
+      `).run(status || 'done', paramsStr || null, toolOutput || null, durationSeconds || null, id);
     }
   }
 };

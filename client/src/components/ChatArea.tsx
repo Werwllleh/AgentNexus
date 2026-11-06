@@ -219,6 +219,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 key={msg.id}
                 message={msg}
                 isStreaming={isRunning && msg.id === activeAssistantMessageId}
+                disabled={isRunning}
+                onSelectOption={(optionText) => {
+                  if (!isRunning) {
+                    onSendPrompt(optionText, 'auto', 'high');
+                  }
+                }}
               />
             ))}
           </div>

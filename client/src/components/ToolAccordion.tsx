@@ -5,6 +5,7 @@ import {
   Search,
   Globe,
   Wrench,
+  HelpCircle,
   ChevronDown,
   ChevronRight,
   CheckCircle2,
@@ -43,6 +44,8 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
       case 'search_web':
       case 'open_browser_url':
         return <Globe className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case 'ask_question':
+        return <HelpCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
       default:
         return <Wrench className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
     }
@@ -58,6 +61,10 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
     }
     if (step.toolName === 'grep_search') {
       return `Поиск: "${params.pattern || params.query || ''}"`;
+    }
+    if (step.toolName === 'ask_question') {
+      const q = params.questions?.[0]?.question || params.question || 'Вопрос с выбором вариантов';
+      return `Вопрос: "${q}"`;
     }
     return step.toolName || 'Вызов инструмента';
   };

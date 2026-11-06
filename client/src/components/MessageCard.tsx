@@ -4,10 +4,14 @@ import 'highlight.js/styles/github-dark.css';
 import { User, Sparkles, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Message } from '../types.ts';
 import { ToolAccordion } from './ToolAccordion.tsx';
+import { InteractiveQuestionsCard } from './InteractiveQuestionsCard.tsx';
+import { extractInteractiveQuestions } from '../services/interactiveQuestions.ts';
 
 interface MessageCardProps {
   message: Message;
   isStreaming?: boolean;
+  disabled?: boolean;
+  onSelectOption?: (optionText: string) => void;
 }
 
 marked.setOptions({
@@ -15,7 +19,12 @@ marked.setOptions({
   gfm: true,
 });
 
-export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }) => {
+export const MessageCard: React.FC<MessageCardProps> = ({
+  message,
+  isStreaming,
+  disabled,
+  onSelectOption
+}) => {
   const [copied, setCopied] = useState(false);
 
   const isUser = message.role === 'user';
@@ -29,6 +38,12 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
       return message.content || '';
     }
   }, [message.content, isUser]);
+
+  // Extract any questions (from ask_question tool or markdown text choices)
+  const interactiveQuestions = useMemo(() => {
+    if (isUser) return [];
+    return extractInteractiveQuestions(message.content || '', message.steps);
+  }, [message.content, message.steps, isUser]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -135,6 +150,16 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, isStreaming }
 
         {(isStreaming || message.status === 'streaming') && message.content && (
           <span className="streaming-cursor" />
+        )}
+
+        {/* Interactive Questions & Options Card */}
+        {interactiveQuestions.length > 0 && (
+          <InteractiveQuestionsCard
+            questions={interactiveQuestions}
+            isStreaming={isStreaming}
+            disabled={disabled}
+            onSelectOption={onSelectOption}
+          />
         )}
       </div>
     </div>
