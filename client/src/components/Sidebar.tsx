@@ -127,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={onOpenUpdateModal}
                   data-testid="header-version-badge"
                   className="text-[10px] font-mono px-1 py-0.5 rounded text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer flex items-center gap-1"
-                  title="Центр обновлений (3X-UI Style)"
+                  title="Центр обновлений"
                 >
                   v{versionInfo?.currentVersion || '2.0.0'}
                   {versionInfo?.hasUpdate && (
@@ -434,7 +434,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onOpenUpdateModal}
               data-testid="version-btn"
               className="flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 transition cursor-pointer"
-              title="Открыть центр обновлений (3X-UI Style)"
+              title="Открыть центр обновлений"
             >
               <span>v{versionInfo?.currentVersion || '2.0.0'}</span>
               {versionInfo?.hasUpdate ? (

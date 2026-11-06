@@ -85,7 +85,7 @@ def main():
 
     test_version_api(base_url, login, password)
 
-    print("\n[UI Test] Launching Playwright to test 3X-UI Style Versioning & Update Center...")
+    print("\n[UI Test] Launching Playwright to test Versioning & Update Center...")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(viewport={"width": 1280, "height": 800})
@@ -112,11 +112,11 @@ def main():
         page.screenshot(path=str(SCREENSHOTS_DIR / "nexus_version_badge.png"))
         print("  📸 Saved screenshot: nexus_version_badge.png")
 
-        # Step 3: Open Update Modal (3X-UI Style)
+        # Step 3: Open Update Modal
         footer_btn.click()
         modal = page.locator('[data-testid="update-modal"]').first
         expect(modal).to_be_visible(timeout=5000)
-        print("  ✓ Opened 3X-UI Style Update Center modal")
+        print("  ✓ Opened Update Center modal")
 
         # Verify modal content elements
         expect(modal.locator('text=Центр обновлений')).to_be_visible()
@@ -125,7 +125,11 @@ def main():
         expect(modal.locator('text=Резервная копия')).to_be_visible()
         expect(modal.locator('button:has-text("Проверить обновления")')).to_be_visible()
         expect(modal.locator('[data-testid="start-update-btn"]')).to_be_visible()
-        print("  ✓ Verified all 3X-UI modal cards (Local Version, Remote Status, Backup Notice, Action Buttons)")
+        print("  ✓ Verified modal cards (Local Version, Remote Status, Backup Notice, Action Buttons)")
+
+        # Verify '3X-UI' is NOT displayed in the UI modal
+        assert '3X-UI' not in modal.text_content(), "3X-UI must not be displayed in update modal"
+        print("  ✓ Confirmed '3X-UI' is NOT present in UI")
 
         # Test Re-check button
         modal.locator('button:has-text("Проверить обновления")').click()

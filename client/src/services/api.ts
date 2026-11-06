@@ -199,7 +199,7 @@ export async function addProjectFolder(data: {
   });
 }
 
-// Versioning & Update Center API (3X-UI Style)
+// Versioning & Update Center API
 export async function fetchVersionInfo(force = false): Promise<VersionInfo> {
   return request(`/api/system/version${force ? '?force=true' : ''}`);
 }

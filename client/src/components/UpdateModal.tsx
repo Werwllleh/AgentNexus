@@ -119,9 +119,6 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             <div>
               <h2 className="font-semibold text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 Центр обновлений
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
-                  3X-UI Style
-                </span>
               </h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Управление версиями и обновление системы в 1 клик

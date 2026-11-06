@@ -411,7 +411,7 @@ app.get('/api/system/usage', async (req, res) => {
   }
 });
 
-// Version & Update Center API (3X-UI Style)
+// Version & Update Center API
 app.get('/api/system/version', requireAuth, async (req, res) => {
   try {
     const force = req.query.force === 'true';
