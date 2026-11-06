@@ -104,7 +104,7 @@ class VersionManager {
 
     // 2. Query GitHub Releases API for tagged releases
     try {
-      const res = await fetch('https://api.github.com/repos/Werwllleh/gemini-hub/releases/latest', {
+      const res = await fetch('https://api.github.com/repos/Werwllleh/AgentNexus/releases/latest', {
         headers: {
           'User-Agent': 'AgentNexus-UpdateManager',
           Accept: 'application/vnd.github.v3+json'
