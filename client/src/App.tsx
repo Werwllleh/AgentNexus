@@ -16,6 +16,8 @@ import { Theme, getInitialTheme, applyTheme } from './services/theme.ts';
 import { Sidebar } from './components/Sidebar.tsx';
 import { ChatArea } from './components/ChatArea.tsx';
 import { LoginView } from './components/LoginView.tsx';
+import { DirectoryPickerModal } from './components/DirectoryPickerModal.tsx';
+import { ProjectFileExplorerModal } from './components/ProjectFileExplorerModal.tsx';
 
 export const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
@@ -30,6 +32,8 @@ export const App: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isDirectoryPickerOpen, setIsDirectoryPickerOpen] = useState(false);
+  const [isProjectFilesOpen, setIsProjectFilesOpen] = useState(false);
 
   // Theme sync
   useEffect(() => {
@@ -400,7 +404,13 @@ export const App: React.FC = () => {
   };
 
   // Handle Send Prompt
-  const handleSendPrompt = async (promptText: string, mode: string, effort: string) => {
+  const handleSendPrompt = async (
+    promptText: string,
+    mode: string = 'auto',
+    effort: string = 'high',
+    engine: string = 'gemini',
+    model: string = 'auto'
+  ) => {
     if (!selectedProjectId) return;
     setSecurityError(null);
 
@@ -463,6 +473,8 @@ export const App: React.FC = () => {
         projectId: selectedProjectId,
         conversationId: targetConvId,
         prompt: promptText,
+        engine,
+        model,
         mode,
         effort
       });
@@ -549,6 +561,11 @@ export const App: React.FC = () => {
     );
   }
 
+  const handleProjectAdded = (newProject: Project) => {
+    setProjects((prev) => [newProject, ...prev]);
+    setSelectedProjectId(newProject.id);
+  };
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
 
   return (
@@ -567,6 +584,7 @@ export const App: React.FC = () => {
         onToggleTheme={toggleTheme}
         isOpenMobile={isMobileNavOpen}
         onCloseMobile={() => setIsMobileNavOpen(false)}
+        onOpenDirectoryPicker={() => setIsDirectoryPickerOpen(true)}
       />
 
       <ChatArea
@@ -579,6 +597,19 @@ export const App: React.FC = () => {
         securityError={securityError}
         onDismissSecurityError={() => setSecurityError(null)}
         onOpenMobile={() => setIsMobileNavOpen(true)}
+        onOpenProjectFiles={() => setIsProjectFilesOpen(true)}
+      />
+
+      <DirectoryPickerModal
+        isOpen={isDirectoryPickerOpen}
+        onClose={() => setIsDirectoryPickerOpen(false)}
+        onProjectAdded={handleProjectAdded}
+      />
+
+      <ProjectFileExplorerModal
+        project={selectedProject}
+        isOpen={isProjectFilesOpen}
+        onClose={() => setIsProjectFilesOpen(false)}
       />
     </div>
   );

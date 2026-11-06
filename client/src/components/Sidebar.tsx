@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FolderGit2,
+  FolderPlus,
   GitBranch,
   Plus,
   MessageSquare,
@@ -32,6 +33,7 @@ interface SidebarProps {
   onToggleTheme: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  onOpenDirectoryPicker?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleTheme,
   isOpenMobile,
   onCloseMobile,
+  onOpenDirectoryPicker,
 }) => {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
@@ -112,9 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="min-w-0">
               <h1 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tracking-tight truncate flex items-center gap-1.5">
-                Gemini Hub
+                AgentNexus
                 <span className="text-[9px] font-mono font-medium px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
-                  CLI
+                  STUDIO
                 </span>
               </h1>
             </div>
@@ -165,6 +168,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Layers className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
               Проекты ({projects.length})
             </span>
+            {onOpenDirectoryPicker && (
+              <button
+                type="button"
+                data-testid="add-project-btn"
+                onClick={onOpenDirectoryPicker}
+                className="flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 border border-indigo-200/60 dark:border-indigo-500/30 transition cursor-pointer"
+                title="Добавить проект из директории сервера"
+              >
+                <FolderPlus className="w-3 h-3" />
+                <span>+ Проект</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-1 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-0.5">

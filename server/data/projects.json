@@ -50,9 +50,9 @@
   },
   {
     "id": "project-management",
-    "name": "Gemini Hub / PM",
+    "name": "AgentNexus Studio",
     "path": "/home/alex/apps/project-management",
-    "description": "AI Project Management Hub (this app)",
+    "description": "AgentNexus Universal Multi-Agent Studio (this app)",
     "category": "tools"
   }
 ]

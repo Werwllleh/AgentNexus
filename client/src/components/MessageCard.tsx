@@ -76,7 +76,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
         {/* Header toolbar */}
         <div className="flex items-center justify-between mb-3 text-xs text-zinc-500 dark:text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
           <span className="font-semibold text-zinc-900 dark:text-zinc-200 flex items-center gap-1.5">
-            Gemini Agent
+            AgentNexus AI
             {isStreaming && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-ping" />
@@ -134,7 +134,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
                 if (activeStep) {
                   return `Выполняю: ${activeStep.toolName || 'действие'}...`;
                 }
-                return 'Gemini выполняет задачу...';
+                return 'Агент выполняет задачу...';
               })()}
             </span>
           </div>

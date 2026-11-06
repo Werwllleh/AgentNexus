@@ -10,3 +10,5 @@ server/data/*.db-wal
 server/data/*.db-shm
 server/data/auth.json
 tests/screenshots/
+__pycache__/
+*.pyc

@@ -1,4 +1,12 @@
-import { Project, Conversation, ConversationDetail } from '../types.ts';
+import {
+  Project,
+  Conversation,
+  ConversationDetail,
+  AIEngine,
+  FsBrowseResponse,
+  FileContentResponse,
+  GitStatusResponse
+} from '../types.ts';
 
 const BASE_URL = '';
 
@@ -127,19 +135,23 @@ export async function sendPrompt({
   projectId,
   conversationId,
   prompt,
+  engine,
+  model,
   mode,
   effort,
 }: {
   projectId: string;
   conversationId?: string | null;
   prompt: string;
+  engine?: string;
+  model?: string;
   mode?: string;
   effort?: string;
 }): Promise<any> {
   return request('/api/prompt', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, conversationId, prompt, mode, effort }),
+    body: JSON.stringify({ projectId, conversationId, prompt, engine, model, mode, effort }),
   });
 }
 
@@ -151,4 +163,36 @@ export async function stopConversation(conversationId: string): Promise<{ succes
 
 export async function fetchUsage(force = false): Promise<any> {
   return request(`/api/system/usage${force ? '?force=true' : ''}`);
+}
+
+// AI Engines API
+export async function fetchEngines(): Promise<AIEngine[]> {
+  return request('/api/engines');
+}
+
+// File Explorer & Project Picker API
+export async function browseFs(dirPath?: string): Promise<FsBrowseResponse> {
+  const query = dirPath ? `?path=${encodeURIComponent(dirPath)}` : '';
+  return request(`/api/fs/browse${query}`);
+}
+
+export async function fetchFileContent(filePath: string): Promise<FileContentResponse> {
+  return request(`/api/fs/file?path=${encodeURIComponent(filePath)}`);
+}
+
+export async function fetchGitStatus(projectPath: string): Promise<GitStatusResponse> {
+  return request(`/api/fs/git-status?path=${encodeURIComponent(projectPath)}`);
+}
+
+export async function addProjectFolder(data: {
+  folderPath: string;
+  name?: string;
+  description?: string;
+  category?: string;
+}): Promise<{ success: boolean; project: Project }> {
+  return request('/api/projects/add-folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 }

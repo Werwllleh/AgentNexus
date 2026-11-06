@@ -56,13 +56,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onSuccess, theme, onToggle
               <ShieldCheck className="w-7 h-7" />
             </div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center justify-center gap-2">
-              Gemini Hub
+              AgentNexus
               <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 dark:border-indigo-500/30">
-                PRO
+                STUDIO
               </span>
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-mono">
-              Вход в систему управления проектами
+              Вход в мульти-агентную студию разработки
             </p>
           </div>
 

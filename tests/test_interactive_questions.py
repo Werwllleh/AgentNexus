@@ -130,8 +130,8 @@ def run_tests():
 
             # 2. Select Project and Conversation
             time.sleep(1)
-            # Click Gemini Hub project if not already selected
-            proj_btn = page.locator('button:has-text("Gemini Hub / PM")').first
+            # Click AgentNexus Studio project if not already selected
+            proj_btn = page.locator('button:has-text("AgentNexus Studio")').first
             if proj_btn.is_visible():
                 proj_btn.click(force=True)
                 time.sleep(0.5)

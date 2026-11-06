@@ -67,3 +67,55 @@ export interface UsageData {
   updatedAt: number;
   cached?: boolean;
 }
+
+export interface EngineModel {
+  id: string;
+  name: string;
+  badge?: string;
+  default?: boolean;
+}
+
+export interface AIEngine {
+  id: string;
+  name: string;
+  provider: string;
+  isAvailable: boolean;
+  models: EngineModel[];
+}
+
+export interface FileItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  isProjectFolder?: boolean;
+}
+
+export interface FsBrowseResponse {
+  currentPath: string;
+  parentPath: string | null;
+  isGitRepo: boolean;
+  detectedProject?: {
+    name: string;
+    description?: string;
+    branch?: string;
+    path: string;
+  } | null;
+  items: FileItem[];
+}
+
+export interface GitStatusResponse {
+  isGitRepo: boolean;
+  branch: string | null;
+  isClean: boolean;
+  changedFiles: Array<{ file: string; status: string }>;
+  diffSummary: string;
+  error?: string;
+}
+
+export interface FileContentResponse {
+  path: string;
+  name: string;
+  size: number;
+  extension: string;
+  content: string;
+}

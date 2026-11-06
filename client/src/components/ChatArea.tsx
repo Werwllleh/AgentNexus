@@ -9,7 +9,8 @@ import {
   Loader2,
   Square,
   X,
-  Menu
+  Menu,
+  Files
 } from 'lucide-react';
 import { Project, ConversationDetail, Message } from '../types.ts';
 import { MessageCard } from './MessageCard.tsx';
@@ -19,12 +20,13 @@ interface ChatAreaProps {
   project: Project | null;
   conversation: ConversationDetail | null;
   isRunning: boolean;
-  onSendPrompt: (prompt: string, mode: string, effort: string) => void;
+  onSendPrompt: (prompt: string, mode: string, effort: string, engine?: string, model?: string) => void;
   onStop: () => void;
   activeAssistantMessageId?: string | null;
   securityError?: string | null;
   onDismissSecurityError?: () => void;
   onOpenMobile?: () => void;
+  onOpenProjectFiles?: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -36,7 +38,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   activeAssistantMessageId,
   securityError,
   onDismissSecurityError,
-  onOpenMobile
+  onOpenMobile,
+  onOpenProjectFiles
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -116,8 +119,21 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
-        {/* Status & Stop button */}
+        {/* Status, File Explorer & Stop button */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {onOpenProjectFiles && (
+            <button
+              type="button"
+              data-testid="open-files-btn"
+              onClick={onOpenProjectFiles}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+              title="Просмотр файлов проекта и Git Diff"
+            >
+              <Files className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden sm:inline">Файлы и Git</span>
+            </button>
+          )}
+
           {isRunning ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 font-mono">
@@ -192,7 +208,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               Рабочее пространство проекта {project.name}
             </h3>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-md mx-auto">
-              Задайте Gemini промпт: напишите код, запустите тесты, выполните рефакторинг или спросите по архитектуре. Все изменения выполняются прямо в папке <code className="text-indigo-600 dark:text-indigo-300 font-mono">{project.path}</code>.
+              Задайте мульти-агентам (Gemini, Claude, OpenAI) промпт: напишите код, запустите тесты, выполните рефакторинг или спросите по архитектуре. Все изменения выполняются прямо в папке <code className="text-indigo-600 dark:text-indigo-300 font-mono">{project.path}</code>.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">

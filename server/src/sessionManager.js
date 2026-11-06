@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { dbRepo } from './db.js';
 import { validatePrompt, validateToolCommand, logSecurityIncident } from './guardrails.js';
+import { engineRegistry } from './engines/engineRegistry.js';
 
 // Map: conversationId -> ActiveSession
 // ActiveSession: { conversationId, projectId, child, assistantMessageId, userMessageId, accumulatedText, stepMap, startTime }
@@ -77,7 +78,17 @@ export function stopSession(conversationId) {
   return true;
 }
 
-export async function startTurn({ projectId, projectPath, conversationId, prompt, mode = 'auto', effort = 'high', clientIp = 'unknown' }) {
+export async function startTurn({
+  projectId,
+  projectPath,
+  conversationId,
+  prompt,
+  engine = 'gemini',
+  model = 'auto',
+  mode = 'auto',
+  effort = 'high',
+  clientIp = 'unknown'
+}) {
   // Pre-execution Security Guardrail
   const validation = validatePrompt(prompt);
   if (!validation.safe) {
@@ -115,30 +126,16 @@ export async function startTurn({ projectId, projectPath, conversationId, prompt
     dbRepo.createMessage(assistantMsgId, actualConversationId, 'assistant', '', 'streaming');
   }
 
-  const args = [
-    '--output-format', 'stream-json',
-    '--dangerously-skip-permissions',
-  ];
+  const engineInstance = engineRegistry.get(engine || 'gemini');
+  console.log(`[Session] Spawning ${engineInstance.name} (${engineInstance.id}) for project ${projectId} in ${projectPath}`);
 
-  // If conversation already has an active agy conversation ID, resume it!
-  if (existing?.agy_id) {
-    args.push('--conversation', existing.agy_id);
-  }
-  if (mode && mode !== 'auto' && mode !== 'default') {
-    args.push('--mode', mode);
-  }
-  if (effort) {
-    args.push('--effort', effort);
-  }
-  args.push('-p', prompt);
-
-  console.log(`[Session] Spawning agy for project ${projectId} in ${projectPath}`);
-  console.log(`[Session] Args:`, args.join(' '));
-
-  const child = spawn('/home/alex/.local/bin/agy', args, {
-    cwd: projectPath,
-    env: { ...process.env, TERM: 'xterm-256color' },
-    detached: true
+  const child = engineInstance.spawnProcess({
+    projectPath,
+    prompt,
+    mode,
+    effort,
+    model,
+    resumeId: existing?.agy_id
   });
 
   const sessionData = {
@@ -146,6 +143,8 @@ export async function startTurn({ projectId, projectPath, conversationId, prompt
     projectId,
     projectPath,
     prompt,
+    engine: engineInstance.id,
+    engineInstance,
     clientIp,
     child,
     userMsgId,
@@ -249,7 +248,93 @@ export async function startTurn({ projectId, projectPath, conversationId, prompt
 }
 
 function handleStreamEvent(event, session) {
-  // 1. Init event
+  const convId = session.conversationId;
+  if (!convId) return;
+
+  // Non-Gemini Engine Normalization (Claude Code / OpenAI)
+  if (session.engineInstance && session.engineInstance.id !== 'gemini') {
+    const norm = session.engineInstance.normalizeEvent(event);
+    if (!norm) return;
+
+    if (norm.type === 'init' && norm.conversationId) {
+      dbRepo.updateConversation(convId, { agyId: norm.conversationId });
+      broadcastToConversation(convId, {
+        type: 'init',
+        conversationId: convId,
+        tools: norm.tools || []
+      });
+      return;
+    }
+
+    if (norm.type === 'text_delta') {
+      session.accumulatedText += norm.delta;
+      broadcastToConversation(convId, {
+        type: 'text_delta',
+        conversationId: convId,
+        messageId: session.assistantMessageId,
+        delta: norm.delta,
+        fullContent: session.accumulatedText
+      });
+      return;
+    }
+
+    if (norm.type === 'tool_update') {
+      const stepKey = `step_${norm.stepIndex || 1}`;
+      const existingStep = session.stepMap.get(stepKey) || {
+        id: crypto.randomUUID(),
+        stepIndex: norm.stepIndex || 1,
+        stepType: 'tool',
+        toolName: norm.toolName,
+        toolParams: norm.toolParams || null,
+        toolOutput: norm.toolOutput || null,
+        status: norm.status || 'active'
+      };
+      if (norm.status === 'done') existingStep.status = 'done';
+      if (norm.toolOutput) existingStep.toolOutput = norm.toolOutput;
+      session.stepMap.set(stepKey, existingStep);
+
+      dbRepo.upsertStep({
+        id: existingStep.id,
+        messageId: session.assistantMessageId,
+        stepIndex: existingStep.stepIndex,
+        stepType: existingStep.stepType,
+        toolName: existingStep.toolName,
+        toolParams: existingStep.toolParams,
+        toolOutput: existingStep.toolOutput,
+        status: existingStep.status
+      });
+
+      broadcastToConversation(convId, {
+        type: 'tool_update',
+        conversationId: convId,
+        messageId: session.assistantMessageId,
+        step: existingStep
+      });
+      return;
+    }
+
+    if (norm.type === 'result') {
+      if (!session.accumulatedText && norm.finalText) {
+        session.accumulatedText = norm.finalText;
+      }
+      return;
+    }
+
+    if (norm.type === 'error') {
+      session.accumulatedText += `\n\n⚠️ **[${session.engineInstance.name}]**: ${norm.error}`;
+      broadcastToConversation(convId, {
+        type: 'text_delta',
+        conversationId: convId,
+        messageId: session.assistantMessageId,
+        delta: norm.error,
+        fullContent: session.accumulatedText
+      });
+      return;
+    }
+    return;
+  }
+
+  // 1. Init event (Gemini)
   if (event.event === 'init') {
     const cid = event.conversation_id;
     if (cid && session.conversationId) {
@@ -283,9 +368,6 @@ function handleStreamEvent(event, session) {
     });
     return;
   }
-
-  const convId = session.conversationId;
-  if (!convId) return;
 
   // 2. Step update event
   if (event.event === 'step_update' && event.step_update) {

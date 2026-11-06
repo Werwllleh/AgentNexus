@@ -26,6 +26,13 @@ import {
   stopSession,
   getAllActiveSessionIds
 } from './sessionManager.js';
+import { engineRegistry } from './engines/engineRegistry.js';
+import {
+  browseDirectory,
+  readFileContent,
+  getGitStatus,
+  addFolderAsProject
+} from './fileExplorer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -219,9 +226,60 @@ app.get('/api/conversations/:id', (req, res) => {
   }
 });
 
+// Available AI Engines & Models
+app.get('/api/engines', requireAuth, (req, res) => {
+  try {
+    const list = engineRegistry.getAll();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// File System Explorer & Directory Picker
+app.get('/api/fs/browse', requireAuth, (req, res) => {
+  try {
+    const data = browseDirectory(req.query.path);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/fs/file', requireAuth, (req, res) => {
+  try {
+    const data = readFileContent(req.query.path);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/fs/git-status', requireAuth, (req, res) => {
+  try {
+    const data = getGitStatus(req.query.path);
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/projects/add-folder', requireAuth, (req, res) => {
+  try {
+    const { path: folderPath, name, description, category } = req.body;
+    if (!folderPath) {
+      return res.status(400).json({ error: 'path is required' });
+    }
+    const newProject = addFolderAsProject({ folderPath, name, description, category });
+    res.json({ success: true, project: newProject });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.post('/api/prompt', async (req, res) => {
   try {
-    const { projectId, conversationId, prompt, mode, effort } = req.body;
+    const { projectId, conversationId, prompt, engine, model, mode, effort } = req.body;
     if (!projectId || !prompt) {
       return res.status(400).json({ error: 'projectId and prompt are required' });
     }
@@ -243,6 +301,8 @@ app.post('/api/prompt', async (req, res) => {
       projectPath: project.path,
       conversationId: conversationId || null,
       prompt,
+      engine: engine || 'gemini',
+      model: model || 'auto',
       mode: mode || 'auto',
       effort: effort || 'high',
       clientIp

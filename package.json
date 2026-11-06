@@ -1,10 +1,11 @@
 {
-  "name": "gemini-project-management",
-  "version": "1.0.0",
-  "description": "Web-based Project Management & AI Orchestrator powered by Gemini CLI",
+  "name": "agent-nexus",
+  "version": "2.0.0",
+  "description": "AgentNexus: Universal Multi-Agent AI Engineering & Project Orchestration Studio",
   "scripts": {
     "dev:server": "node server/src/index.js",
     "dev:client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
     "build:client": "cd client && npm run build",
     "start": "node server/src/index.js",
     "set-password": "node server/src/setPassword.js",
