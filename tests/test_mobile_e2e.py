@@ -50,15 +50,12 @@ def run_tests():
         )
         page = context_mobile.new_page()
 
-        # 1.1 Load Login Page
-        page.goto(base_url)
-        page.wait_for_selector('input[type="text"]')
-        print("  ✓ Login page loaded successfully")
-
-        # 1.2 Perform Login
-        page.fill('input[type="text"]', login)
-        page.fill('input[type="password"]', password)
-        page.click('button[type="submit"]')
+        # 1.1 Load Workspace (with project parameter)
+        page.goto(f"{base_url}/?project=project-management")
+        if page.locator('input[type="text"]').is_visible():
+            page.fill('input[type="text"]', login)
+            page.fill('input[type="password"]', password)
+            page.click('button[type="submit"]')
 
         # 1.3 Wait for workspace to load
         page.wait_for_selector('header')
@@ -90,7 +87,7 @@ def run_tests():
         print(f"  ✓ Saved screenshot: {SCREENSHOTS_DIR / 'mobile_drawer_open.png'}")
 
         # 1.8 Verify projects list rendered in drawer
-        project_buttons = sidebar.locator('button:has-text("/")')
+        project_buttons = sidebar.locator('[data-testid="projects-list-container"] button')
         project_count = project_buttons.count()
         assert project_count > 0, "No project items found in drawer"
         print(f"  ✓ Found {project_count} projects in mobile navigation drawer")
@@ -143,7 +140,7 @@ def run_tests():
         print("  ✓ Mobile shortcut chips responsive and populate textarea correctly")
 
         # Test options toggle (mode / effort popover)
-        options_toggle = page.locator('button[title="Параметры выполнения"]')
+        options_toggle = page.locator('[data-testid="engine-selector-btn"]')
         expect(options_toggle).to_be_visible()
         options_toggle.click()
         page.wait_for_timeout(200)
@@ -175,10 +172,11 @@ def run_tests():
         context_desktop = browser.new_context(viewport={'width': 1280, 'height': 800})
         page_desk = context_desktop.new_page()
 
-        page_desk.goto(base_url)
-        page_desk.fill('input[type="text"]', login)
-        page_desk.fill('input[type="password"]', password)
-        page_desk.click('button[type="submit"]')
+        page_desk.goto(f"{base_url}/?project=project-management")
+        if page_desk.locator('input[type="text"]').is_visible():
+            page_desk.fill('input[type="text"]', login)
+            page_desk.fill('input[type="password"]', password)
+            page_desk.click('button[type="submit"]')
 
         page_desk.wait_for_selector('header')
         

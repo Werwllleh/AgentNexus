@@ -238,7 +238,7 @@ def run_e2e_tests():
             # -------------------------------------------------------------
             print("\n[Step 5] Verifying Interactive Question Options in Dialog...")
             # Select test conversation
-            conv_btn = page.locator('button:has-text("Тест AgentNexus Студии")').first
+            conv_btn = page.locator(':is(button, [data-testid="conversation-item"]):has-text("Тест AgentNexus Студии")').first
             expect(conv_btn).to_be_visible(timeout=8000)
             conv_btn.click(force=True)
             time.sleep(0.5)

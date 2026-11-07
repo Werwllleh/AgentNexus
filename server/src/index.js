@@ -240,6 +240,38 @@ app.get('/api/conversations/:id', (req, res) => {
   }
 });
 
+app.patch('/api/conversations/:id', requireAuth, (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    const conv = dbRepo.getConversation(req.params.id);
+    if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+    dbRepo.updateConversation(req.params.id, { title: title.trim() });
+    const updated = dbRepo.getConversation(req.params.id);
+    res.json({ success: true, conversation: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/conversations/:id', requireAuth, (req, res) => {
+  try {
+    if (getActiveSession(req.params.id)) {
+      stopSession(req.params.id);
+    }
+    const success = dbRepo.deleteConversation(req.params.id);
+    if (!success) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    res.json({ success: true, id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Available AI Engines & Models
 app.get('/api/engines', requireAuth, (req, res) => {
   try {

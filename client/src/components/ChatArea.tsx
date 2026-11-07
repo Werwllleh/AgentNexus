@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   FolderGit2,
   GitBranch,
@@ -10,7 +10,11 @@ import {
   Square,
   X,
   Menu,
-  Files
+  Files,
+  ChevronDown,
+  Play,
+  FileSearch,
+  CheckCircle2
 } from 'lucide-react';
 import { Project, ConversationDetail, Message } from '../types.ts';
 import { MessageCard } from './MessageCard.tsx';
@@ -47,24 +51,45 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [hasNewWhileScrolled, setHasNewWhileScrolled] = useState(false);
 
   // Track if user is reading previous messages so we don't yank their view
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 140;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const isNear = distanceFromBottom < 120;
+    isNearBottomRef.current = isNear;
+    setShowScrollBottom(!isNear);
+    if (isNear) {
+      setHasNewWhileScrolled(false);
+    }
   };
 
   // Smooth jitter-free auto scroll to bottom only when user is near bottom
   useEffect(() => {
-    if (!scrollRef.current || !isNearBottomRef.current) return;
+    if (!scrollRef.current) return;
 
-    requestAnimationFrame(() => {
-      if (scrollRef.current && isNearBottomRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    });
+    if (isNearBottomRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current && isNearBottomRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    } else if (isRunning) {
+      setHasNewWhileScrolled(true);
+    }
   }, [conversation?.messages, isRunning, securityError]);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      isNearBottomRef.current = true;
+      setShowScrollBottom(false);
+      setHasNewWhileScrolled(false);
+    }
+  };
 
   if (!project) {
     return (
@@ -137,6 +162,33 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   }
 
   const messages = conversation?.messages || [];
+
+  const starterPrompts = [
+    {
+      title: 'Git статус & Diff',
+      description: 'Показать измененные файлы и статус git ветки',
+      prompt: 'Проверь git status и покажи текущие изменения в проекте',
+      icon: <GitBranch className="w-4 h-4 text-emerald-500" />
+    },
+    {
+      title: 'Запуск тестов',
+      description: 'Запустить test suite и исправить ошибки при падении',
+      prompt: 'Запусти тесты проекта и исправь ошибки, если они есть',
+      icon: <Play className="w-4 h-4 text-amber-500" />
+    },
+    {
+      title: 'Аудит архитектуры',
+      description: 'Изучить модули, зависимости и структуру сервисов',
+      prompt: 'Изучи архитектуру проекта и опиши ключевые модули и структуру',
+      icon: <FileSearch className="w-4 h-4 text-sky-500" />
+    },
+    {
+      title: 'Ревью безопасности',
+      description: 'Поиск уязвимостей, секретов и потенциальных багов',
+      prompt: 'Проверь код проекта на уязвимости, хардкод секретов и потенциальные баги',
+      icon: <CheckCircle2 className="w-4 h-4 text-purple-500" />
+    }
+  ];
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-zinc-50/60 dark:bg-zinc-950 min-w-0 transition-colors duration-200 overflow-hidden relative">
@@ -231,7 +283,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-4 overscroll-contain"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-4 overscroll-contain relative"
       >
         {/* Security Warning Banner if Blocked */}
         {securityError && (
@@ -259,7 +311,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         )}
 
         {messages.length === 0 ? (
-          <div className="max-w-xl mx-auto my-12 text-center space-y-4">
+          <div className="max-w-2xl mx-auto my-8 sm:my-12 text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-600/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-xs">
               <Sparkles className="w-6 h-6" />
             </div>
@@ -267,24 +319,38 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               Рабочее пространство проекта {project.name}
             </h3>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-md mx-auto">
-              Задайте мульти-агентам (Gemini, Claude, OpenAI) промпт: напишите код, запустите тесты, выполните рефакторинг или спросите по архитектуре. Все изменения выполняются прямо в папке <code className="text-indigo-600 dark:text-indigo-300 font-mono">{project.path}</code>.
+              Задайте мульти-агентам задачу: выберите быстрый сценарий ниже или введите собственный промпт в поле ввода.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">
-              <div className="p-3 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-xl text-xs text-zinc-700 dark:text-zinc-300 shadow-xs">
-                <div className="font-semibold text-zinc-900 dark:text-zinc-200 mb-1 flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Автономное выполнение
-                </div>
-                Агент читает файлы, запускает bash команды и вносит изменения по вашим указаниям.
-              </div>
-              <div className="p-3 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-xl text-xs text-zinc-700 dark:text-zinc-300 shadow-xs">
-                <div className="font-semibold text-zinc-900 dark:text-zinc-200 mb-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  Защищенный контур
-                </div>
-                Деструктивные команды и попытки модификации системы за пределами проекта блокируются.
-              </div>
+            {/* Smart Starter Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2 max-w-xl mx-auto">
+              {starterPrompts.map((card, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  data-testid={`starter-prompt-card-${i}`}
+                  onClick={() => !isRunning && onSendPrompt(card.prompt, 'auto', 'high')}
+                  disabled={isRunning}
+                  className="p-3 bg-white dark:bg-zinc-900/60 hover:bg-zinc-50 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 hover:border-indigo-400 dark:hover:border-indigo-500/50 rounded-xl text-xs transition-all group cursor-pointer shadow-xs text-left flex items-start gap-2.5"
+                >
+                  <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 shrink-0 mt-0.5">
+                    {card.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-zinc-900 dark:text-zinc-200 mb-0.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center justify-between">
+                      <span>{card.title}</span>
+                      <span className="text-[10px] text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">Запустить →</span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug font-sans">
+                      {card.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-3 max-w-md mx-auto text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+              Директория проекта: <code className="text-indigo-600 dark:text-indigo-400 font-semibold">{project.path}</code>
             </div>
           </div>
         ) : (
@@ -305,6 +371,23 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         )}
       </div>
+
+      {/* Floating Scroll to Bottom Button */}
+      {showScrollBottom && (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          data-testid="scroll-bottom-btn"
+          className="absolute bottom-28 right-4 sm:right-8 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 shadow-xl hover:shadow-2xl text-xs font-medium hover:border-indigo-500 transition-all cursor-pointer animate-in fade-in duration-150"
+          title="Прокрутить к последнему сообщению"
+        >
+          <ChevronDown className="w-3.5 h-3.5" />
+          <span>Вниз</span>
+          {hasNewWhileScrolled && (
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+          )}
+        </button>
+      )}
 
       {/* Input area - Fixed / Sticky Bottom */}
       <div className="shrink-0 sticky bottom-0 z-30 w-full min-w-0">

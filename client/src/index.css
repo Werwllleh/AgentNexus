@@ -236,3 +236,42 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* Code block wrapper with header & copy button */
+.markdown-body .code-block-wrapper {
+  margin: 1rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(228, 228, 231, 0.9);
+  background-color: #0d1117;
+}
+.dark .markdown-body .code-block-wrapper {
+  border-color: rgba(39, 39, 42, 0.9);
+  background-color: #0d1117;
+}
+.markdown-body .code-block-wrapper pre {
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.875rem 1rem !important;
+}
+.markdown-body .code-block-wrapper pre code {
+  color: #e6edf3 !important;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Callouts / GitHub-style alerts */
+.markdown-body .callout {
+  margin: 1rem 0;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border-width: 1px;
+  border-left-width: 4px;
+}
+

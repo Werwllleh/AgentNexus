@@ -133,6 +133,20 @@ export async function createConversation(projectId: string, title?: string): Pro
   });
 }
 
+export async function renameConversation(id: string, title: string): Promise<{ success: boolean; conversation: Conversation }> {
+  return request(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteConversation(id: string): Promise<{ success: boolean; id: string }> {
+  return request(`/api/conversations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function sendPrompt({
   projectId,
   conversationId,

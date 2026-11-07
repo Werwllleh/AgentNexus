@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FolderGit2,
   FolderPlus,
@@ -14,7 +14,11 @@ import {
   X,
   Cpu,
   RotateCw,
-  ChevronDown
+  ChevronDown,
+  Search,
+  Pencil,
+  Trash2,
+  Check
 } from 'lucide-react';
 import { Project, Conversation, UsageData, VersionInfo } from '../types.ts';
 import { Theme } from '../services/theme.ts';
@@ -28,6 +32,8 @@ interface SidebarProps {
   selectedConversationId: string | null;
   onSelectConversation: (conversationId: string) => void;
   onNewConversation: () => void;
+  onRenameConversation?: (conversationId: string, newTitle: string) => void;
+  onDeleteConversation?: (conversationId: string) => void;
   onLogout: () => void;
   isConnected: boolean;
   theme: Theme;
@@ -47,6 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedConversationId,
   onSelectConversation,
   onNewConversation,
+  onRenameConversation,
+  onDeleteConversation,
   onLogout,
   isConnected,
   theme,
@@ -60,6 +68,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
   const [isUsageExpanded, setIsUsageExpanded] = useState(true);
+  const [projectSearch, setProjectSearch] = useState('');
+  
+  // Conversation session inline edit & delete state
+  const [editingConvId, setEditingConvId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
 
   const loadUsage = useCallback(async (force = false) => {
     setIsUsageLoading(true);
@@ -88,6 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleConversationClick = (id: string) => {
+    if (editingConvId || deletingConvId) return;
     onSelectConversation(id);
     onCloseMobile?.();
   };
@@ -96,6 +111,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onNewConversation();
     onCloseMobile?.();
   };
+
+  const handleStartRename = (e: React.MouseEvent, conv: Conversation) => {
+    e.stopPropagation();
+    setEditingConvId(conv.id);
+    setEditTitle(conv.title || 'Новый диалог');
+    setDeletingConvId(null);
+  };
+
+  const handleSaveRename = (e: React.MouseEvent | React.KeyboardEvent, convId: string) => {
+    e.stopPropagation();
+    if (editTitle.trim() && onRenameConversation) {
+      onRenameConversation(convId, editTitle.trim());
+    }
+    setEditingConvId(null);
+    setEditTitle('');
+  };
+
+  const handleCancelRename = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    setEditingConvId(null);
+    setEditTitle('');
+  };
+
+  const handleStartDelete = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation();
+    setDeletingConvId(convId);
+    setEditingConvId(null);
+  };
+
+  const handleConfirmDelete = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation();
+    if (onDeleteConversation) {
+      onDeleteConversation(convId);
+    }
+    setDeletingConvId(null);
+  };
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingConvId(null);
+  };
+
+  // Filtered projects by search keyword
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch.trim()) return projects;
+    const q = projectSearch.toLowerCase().trim();
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.path && p.path.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.gitBranch && p.gitBranch.toLowerCase().includes(q))
+    );
+  }, [projects, projectSearch]);
 
   const geminiGroup = usage?.groups?.find((g) => g.name.toLowerCase().includes('gemini')) || usage?.groups?.[0];
   const claudeGroup = usage?.groups?.find((g) => g.name.toLowerCase().includes('claude') || g.name.toLowerCase().includes('gpt')) || usage?.groups?.[1];
@@ -230,7 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Projects List - Expanded height */}
+        {/* Projects List with Quick Search */}
         <div className="p-3 border-b border-zinc-200 dark:border-zinc-800/80">
           <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -251,64 +320,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          <div className="space-y-1 max-h-[170px] sm:max-h-[190px] overflow-y-auto pr-0.5">
-            {projects.map((proj) => {
-              const isSelected = proj.id === selectedProjectId;
-              return (
-                <button
-                  key={proj.id}
-                  onClick={() => handleProjectClick(proj.id)}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group ${
-                    isSelected
-                      ? 'bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-start gap-2 min-w-0">
-                    <FolderGit2
-                      className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                        isSelected
-                          ? 'text-indigo-600 dark:text-indigo-400'
-                          : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'
-                      }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      {/* Top Row: Full Project Name */}
-                      <div className="flex items-center justify-between gap-1.5">
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex-1 text-xs">
-                          {proj.name}
-                        </span>
+          {/* Quick Search Input */}
+          <div className="relative mb-2">
+            <Search className="w-3 h-3 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+              placeholder="Поиск проекта..."
+              data-testid="project-search-input"
+              className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-7 py-1 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-hidden focus:border-indigo-500 font-sans"
+            />
+            {projectSearch && (
+              <button
+                onClick={() => setProjectSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-0.5"
+                title="Очистить поиск"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
 
-                        {proj.hasRunningSession && (
-                          <span className="relative flex h-2 w-2 shrink-0" title="Выполняется фоновая задача">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          <div data-testid="projects-list-container" className="space-y-1 max-h-[160px] sm:max-h-[180px] overflow-y-auto pr-0.5">
+            {filteredProjects.length === 0 ? (
+              <div className="text-center py-3 text-zinc-400 text-xs font-mono">
+                Ничего не найдено
+              </div>
+            ) : (
+              filteredProjects.map((proj) => {
+                const isSelected = proj.id === selectedProjectId;
+                return (
+                  <button
+                    key={proj.id}
+                    onClick={() => handleProjectClick(proj.id)}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2 min-w-0">
+                      <FolderGit2
+                        className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                          isSelected
+                            ? 'text-indigo-600 dark:text-indigo-400'
+                            : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        {/* Top Row: Full Project Name */}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex-1 text-xs">
+                            {proj.name}
                           </span>
-                        )}
-                      </div>
 
-                      {/* Bottom Row: Git Branch + Description */}
-                      <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
-                        {proj.gitBranch && (
-                          <span
-                            title={`Git-ветка: ${proj.gitBranch}`}
-                            className="inline-flex items-center gap-1 px-1 py-0.2 rounded text-[9px] bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400 font-mono shrink-0 max-w-[100px]"
-                          >
-                            <GitBranch className="w-2.5 h-2.5 text-zinc-400 shrink-0" />
-                            <span className="truncate">{proj.gitBranch}</span>
-                          </span>
-                        )}
-                        {proj.description && (
-                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">
-                            {proj.description}
-                          </span>
-                        )}
+                          {proj.hasRunningSession && (
+                            <span className="relative flex h-2 w-2 shrink-0" title="Выполняется фоновая задача">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bottom Row: Git Branch + Description */}
+                        <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
+                          {proj.gitBranch && (
+                            <span
+                              title={`Git-ветка: ${proj.gitBranch}`}
+                              className="inline-flex items-center gap-1 px-1 py-0.2 rounded text-[9px] bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400 font-mono shrink-0 max-w-[100px]"
+                            >
+                              <GitBranch className="w-2.5 h-2.5 text-zinc-400 shrink-0" />
+                              <span className="truncate">{proj.gitBranch}</span>
+                            </span>
+                          )}
+                          {proj.description && (
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">
+                              {proj.description}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -350,28 +447,131 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-1">
               {conversations.map((conv) => {
                 const isSelected = conv.id === selectedConversationId;
+                const isEditing = conv.id === editingConvId;
+                const isDeleting = conv.id === deletingConvId;
+
+                if (isEditing) {
+                  return (
+                    <div
+                      key={conv.id}
+                      data-testid="conversation-item"
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs bg-zinc-100 dark:bg-zinc-800/80 border border-indigo-400 shadow-xs"
+                    >
+                      <div className="flex items-center gap-1.5 w-full">
+                        <input
+                          type="text"
+                          value={editTitle}
+                          autoFocus
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveRename(e, conv.id);
+                            if (e.key === 'Escape') handleCancelRename(e);
+                          }}
+                          className="flex-1 bg-white dark:bg-zinc-900 border border-indigo-500 rounded px-1.5 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => handleSaveRename(e, conv.id)}
+                          className="p-1 text-emerald-600 hover:text-emerald-500 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                          title="Сохранить"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelRename}
+                          className="p-1 text-zinc-400 hover:text-zinc-600 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
+                          title="Отмена"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (isDeleting) {
+                  return (
+                    <div
+                      key={conv.id}
+                      data-testid="conversation-item"
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs bg-rose-50/70 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800 shadow-xs"
+                    >
+                      <div className="flex items-center justify-between w-full text-[11px] font-sans">
+                        <span className="text-rose-600 dark:text-rose-400 font-medium truncate">Удалить сессию?</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleConfirmDelete(e, conv.id)}
+                            className="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-medium cursor-pointer"
+                            title="Подтвердить удаление"
+                          >
+                            Да
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelDelete}
+                            className="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 cursor-pointer"
+                            title="Отмена"
+                          >
+                            Нет
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={conv.id}
+                    type="button"
                     data-testid="conversation-item"
                     onClick={() => handleConversationClick(conv.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center justify-between group cursor-pointer ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-all flex items-center justify-between group cursor-pointer relative ${
                       isSelected
                         ? 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700/80 shadow-xs'
                         : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
                       <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
                       <span className="truncate">{conv.title || 'Новый диалог'}</span>
                     </div>
 
-                    {conv.isRunning && (
-                      <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-                        работает
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {conv.isRunning ? (
+                        <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                          работает
+                        </span>
+                      ) : (
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                          {onRenameConversation && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => handleStartRename(e, conv)}
+                              className="p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 cursor-pointer"
+                              title="Переименовать сессию"
+                            >
+                              <Pencil className="w-3 h-3 pointer-events-none" />
+                            </span>
+                          )}
+                          {onDeleteConversation && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => handleStartDelete(e, conv.id)}
+                              className="p-1 rounded text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer"
+                              title="Удалить сессию"
+                            >
+                              <Trash2 className="w-3 h-3 pointer-events-none" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </button>
                 );
               })}

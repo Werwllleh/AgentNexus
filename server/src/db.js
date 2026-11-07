@@ -134,6 +134,13 @@ export const dbRepo = {
     return this.getConversation(id);
   },
 
+  deleteConversation(id) {
+    db.prepare('DELETE FROM steps WHERE message_id IN (SELECT id FROM messages WHERE conversation_id = ?)').run(id);
+    db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(id);
+    const res = db.prepare('DELETE FROM conversations WHERE id = ?').run(id);
+    return res.changes > 0;
+  },
+
   updateConversation(id, { title, status, lastError, agyId }) {
     const now = Date.now();
     if (title !== undefined) {

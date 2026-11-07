@@ -10,7 +10,8 @@ import {
   Bot,
   Sparkles,
   Cpu,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { AIEngine } from '../types.ts';
 import { fetchEngines } from '../services/api.ts';
@@ -35,7 +36,29 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   const [model, setModel] = useState<string>(() => localStorage.getItem('nexus_model') || 'auto');
   const [availableEngines, setAvailableEngines] = useState<AIEngine[]>([]);
   const [showOptions, setShowOptions] = useState(false);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const tempDraftRef = useRef<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper to load prompt history from localStorage
+  const getPromptHistory = (): string[] => {
+    try {
+      const raw = localStorage.getItem('nexus_prompt_history');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const savePromptToHistory = (text: string) => {
+    try {
+      const current = getPromptHistory();
+      const filtered = [text, ...current.filter((item) => item !== text)].slice(0, 50);
+      localStorage.setItem('nexus_prompt_history', JSON.stringify(filtered));
+    } catch (err) {
+      console.error('Failed to save prompt history:', err);
+    }
+  };
 
   // Fetch AI engines on mount
   useEffect(() => {
@@ -117,25 +140,86 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     }
   }, [prompt]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
   const handleSubmit = () => {
     if (!prompt.trim() || isRunning || disabled) return;
-    onSend(prompt.trim(), mode, effort, engine, model);
+    const cleanText = prompt.trim();
+    savePromptToHistory(cleanText);
+    setHistoryIndex(-1);
+    tempDraftRef.current = '';
+    onSend(cleanText, mode, effort, engine, model);
     setPrompt('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Escape closes options or unfocuses
+    if (e.key === 'Escape') {
+      if (showOptions) {
+        setShowOptions(false);
+      } else {
+        textareaRef.current?.blur();
+      }
+      return;
+    }
+
+    // Ctrl+Enter or Cmd+Enter submits
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+      return;
+    }
+
+    // Plain Enter submits (Shift+Enter creates newline)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+      return;
+    }
+
+    // Prompt history navigation: ArrowUp
+    if (e.key === 'ArrowUp' && (prompt === '' || textareaRef.current?.selectionStart === 0)) {
+      const history = getPromptHistory();
+      if (history.length > 0) {
+        if (historyIndex === -1) {
+          tempDraftRef.current = prompt;
+        }
+        const nextIdx = Math.min(historyIndex + 1, history.length - 1);
+        setHistoryIndex(nextIdx);
+        setPrompt(history[nextIdx]);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // Prompt history navigation: ArrowDown
+    if (e.key === 'ArrowDown' && historyIndex >= 0) {
+      const nextIdx = historyIndex - 1;
+      setHistoryIndex(nextIdx);
+      if (nextIdx === -1) {
+        setPrompt(tempDraftRef.current);
+      } else {
+        const history = getPromptHistory();
+        setPrompt(history[nextIdx]);
+      }
+      e.preventDefault();
+      return;
+    }
+  };
+
   const handleChipClick = (text: string) => {
     setPrompt((prev) => (prev ? `${prev}\n${text}` : text));
     textareaRef.current?.focus();
+  };
+
+  const handleClearPrompt = () => {
+    setPrompt('');
+    setHistoryIndex(-1);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.focus();
+    }
   };
 
   const currentEngineObj = availableEngines.find((e) => e.id === engine) || availableEngines[0];
@@ -150,6 +234,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         return <Sparkles className="w-3.5 h-3.5 text-indigo-500" />;
     }
   };
+
+  // Metrics
+  const charCount = prompt.length;
+  const estimatedTokens = Math.ceil(charCount / 4);
 
   return (
     <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md p-3 sm:p-4 pb-safe transition-colors">
@@ -197,17 +285,32 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <textarea
           ref={textareaRef}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+            setHistoryIndex(-1);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={
             isRunning
               ? 'Агент выполняет задачу в фоне... (можно закрыть вкладку)'
-              : `Задайте промпт для ${currentEngineObj?.name || 'агента'}... (Enter для отправки)`
+              : `Задайте промпт для ${currentEngineObj?.name || 'агента'}... (Enter для отправки, ↑ для истории)`
           }
           rows={1}
           disabled={disabled || isRunning}
           className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 text-sm px-3.5 sm:px-4 pt-3 pb-12 focus:outline-hidden resize-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 leading-relaxed font-sans"
         />
+
+        {/* Clear prompt button */}
+        {prompt.length > 0 && !isRunning && (
+          <button
+            type="button"
+            onClick={handleClearPrompt}
+            className="absolute top-2.5 right-3 p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition cursor-pointer"
+            title="Очистить ввод"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Bottom controls inside the textarea box */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between pointer-events-none">
@@ -228,6 +331,17 @@ export const PromptInput: React.FC<PromptInputProps> = ({
               </span>
               <SlidersHorizontal className="w-2.5 h-2.5 text-zinc-400 ml-0.5" />
             </button>
+
+            {/* Character & Token estimate */}
+            {charCount > 0 && (
+              <span
+                data-testid="prompt-metrics"
+                className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono hidden sm:inline select-none"
+                title="Символов и примерный объем токенов"
+              >
+                {charCount} симв · ~{estimatedTokens} tok
+              </span>
+            )}
 
             {/* Dropdown settings popup */}
             {showOptions && (
@@ -330,6 +444,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             ) : (
               <button
                 type="button"
+                data-testid="send-prompt-btn"
                 onClick={handleSubmit}
                 disabled={!prompt.trim() || disabled}
                 className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600 text-white shadow-md shadow-indigo-600/20 transition cursor-pointer disabled:cursor-not-allowed"

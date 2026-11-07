@@ -129,15 +129,11 @@ def run_tests():
             print("✅ Logged in successfully.")
 
             # 2. Select Project and Conversation
+            page.goto(f"{base_url}/?project={project_id}")
             time.sleep(1)
-            # Click AgentNexus Studio project if not already selected
-            proj_btn = page.locator('button:has-text("AgentNexus Studio")').first
-            if proj_btn.is_visible():
-                proj_btn.click(force=True)
-                time.sleep(0.5)
 
             # Click the seeded conversation
-            conv_btn = page.locator('button:has-text("Тест интерактива вопросов")').first
+            conv_btn = page.locator(':is(button, [data-testid="conversation-item"]):has-text("Тест интерактива вопросов")').first
             expect(conv_btn).to_be_visible(timeout=8000)
             conv_btn.click(force=True)
             time.sleep(0.5)

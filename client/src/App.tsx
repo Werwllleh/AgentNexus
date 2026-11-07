@@ -5,6 +5,8 @@ import {
   fetchConversations,
   fetchConversation,
   createConversation,
+  renameConversation,
+  deleteConversation,
   sendPrompt,
   stopConversation,
   checkAuth,
@@ -473,7 +475,7 @@ export const App: React.FC = () => {
   }, [selectedConversationId, selectedProjectId, isAuthenticated, loadConversations]);
 
   // Handle New Conversation
-  const handleNewConversation = async () => {
+  const handleNewConversation = useCallback(async () => {
     if (!selectedProjectId) return;
     try {
       const conv = await createConversation(selectedProjectId);
@@ -482,7 +484,78 @@ export const App: React.FC = () => {
     } catch (err) {
       console.error('Failed to create new conversation:', err);
     }
+  }, [selectedProjectId, loadConversations]);
+
+  // Handle Rename Conversation
+  const handleRenameConversation = async (convId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    try {
+      await renameConversation(convId, newTitle.trim());
+      setConversations((prev) =>
+        prev.map((c) => (c.id === convId ? { ...c, title: newTitle.trim() } : c))
+      );
+      if (conversationDetail && conversationDetail.id === convId) {
+        setConversationDetail((prev) => (prev ? { ...prev, title: newTitle.trim() } : prev));
+      }
+    } catch (err) {
+      console.error('Failed to rename conversation:', err);
+    }
   };
+
+  // Handle Delete Conversation
+  const handleDeleteConversation = async (convId: string) => {
+    try {
+      await deleteConversation(convId);
+      const remaining = conversations.filter((c) => c.id !== convId);
+      setConversations(remaining);
+      if (selectedConversationId === convId) {
+        if (remaining.length > 0) {
+          setSelectedConversationId(remaining[0].id);
+        } else {
+          setSelectedConversationId(null);
+          setConversationDetail(null);
+          setIsRunning(false);
+          setActiveAssistantMsgId(null);
+          wsClient.unsubscribe();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+    }
+  };
+
+  // Global hotkeys (Ctrl+N, Ctrl+B, Escape)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Escape always closes open modals/overlays
+      if (e.key === 'Escape') {
+        setIsDirectoryPickerOpen(false);
+        setIsProjectFilesOpen(false);
+        setIsUpdateModalOpen(false);
+        setIsMobileNavOpen(false);
+        return;
+      }
+
+      // Ctrl+N or Cmd+N creates a new conversation in current project
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        if (selectedProjectId) {
+          handleNewConversation();
+        }
+        return;
+      }
+
+      // Ctrl+B or Cmd+B toggles mobile navigation drawer
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        setIsMobileNavOpen((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [selectedProjectId, handleNewConversation]);
 
   // Handle Send Prompt
   const handleSendPrompt = async (
@@ -659,6 +732,8 @@ export const App: React.FC = () => {
         selectedConversationId={selectedConversationId}
         onSelectConversation={setSelectedConversationId}
         onNewConversation={handleNewConversation}
+        onRenameConversation={handleRenameConversation}
+        onDeleteConversation={handleDeleteConversation}
         onLogout={handleLogout}
         isConnected={isConnected}
         theme={theme}
