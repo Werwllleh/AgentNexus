@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { marked } from 'marked';
 import 'highlight.js/styles/github-dark.css';
-import { User, Sparkles, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Message } from '../types.ts';
 import { ToolAccordion } from './ToolAccordion.tsx';
 import { InteractiveQuestionsCard } from './InteractiveQuestionsCard.tsx';
@@ -53,26 +53,17 @@ export const MessageCard: React.FC<MessageCardProps> = ({
 
   if (isUser) {
     return (
-      <div data-testid="user-card" className="flex justify-end my-4">
-        <div className="flex gap-3 max-w-[85%] sm:max-w-[75%] items-start">
-          <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md border border-indigo-500/30 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-            {message.content}
-          </div>
-          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-300">
-            <User className="w-4 h-4" />
-          </div>
+      <div data-testid="user-card" className="flex justify-end my-3 w-full">
+        <div className="max-w-[88%] sm:max-w-[80%] bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md border border-indigo-500/30 text-sm leading-relaxed whitespace-pre-wrap font-sans break-words overflow-hidden">
+          {message.content}
         </div>
       </div>
     );
   }
 
   return (
-    <div data-testid="assistant-card" className="flex gap-3 my-4 items-start group">
-      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0 text-white shadow-lg shadow-indigo-500/20 mt-1">
-        <Sparkles className="w-4 h-4" />
-      </div>
-
-      <div className="flex-1 min-w-0 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 relative shadow-xs transition-colors">
+    <div data-testid="assistant-card" className="my-3 w-full min-w-0 group">
+      <div className="w-full min-w-0 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 relative shadow-xs transition-colors overflow-hidden">
         {/* Header toolbar */}
         <div className="flex items-center justify-between mb-3 text-xs text-zinc-500 dark:text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
           <span className="font-semibold text-zinc-900 dark:text-zinc-200 flex items-center gap-1.5">
@@ -122,7 +113,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
         {/* Main message text or Live Status */}
         {message.content ? (
           <div
-            className="markdown-body"
+            className="markdown-body overflow-x-hidden break-words max-w-full"
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         ) : isStreaming || message.status === 'streaming' ? (

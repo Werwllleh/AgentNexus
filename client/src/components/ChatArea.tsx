@@ -172,7 +172,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-4 overscroll-contain"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-4 overscroll-contain"
       >
         {/* Security Warning Banner if Blocked */}
         {securityError && (
@@ -229,7 +229,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto w-full space-y-2">
+          <div className="max-w-4xl mx-auto w-full space-y-2 min-w-0">
             {messages.map((msg) => (
               <MessageCard
                 key={msg.id}
@@ -248,7 +248,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Input area - Fixed / Sticky Bottom */}
-      <div className="shrink-0 sticky bottom-0 z-20">
+      <div className="shrink-0 sticky bottom-0 z-30 w-full min-w-0">
         <PromptInput
           onSend={onSendPrompt}
           onStop={onStop}

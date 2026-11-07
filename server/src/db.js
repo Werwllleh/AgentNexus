@@ -64,19 +64,25 @@ try {
   // column already exists
 }
 
-// Clean up orphaned streaming messages and reset conversations on startup
-try {
-  db.exec(`
-    DELETE FROM messages WHERE status = 'streaming' AND content = '';
-    UPDATE messages SET status = 'stopped' WHERE status = 'streaming';
-    UPDATE conversations SET status = 'idle' WHERE status = 'running';
-  `);
-} catch (err) {
-  console.error('Error cleaning orphaned sessions in DB:', err);
-}
-
 // Repository helpers
 export const dbRepo = {
+  // Graceful cleanup of stale active sessions on server start (NEVER delete user messages!)
+  cleanupOrphanedSessions() {
+    try {
+      db.exec(`
+        UPDATE messages
+        SET status = 'stopped',
+            content = CASE
+              WHEN content IS NULL OR content = '' THEN 'Сессия была завершена или прервана.'
+              ELSE content
+            END
+        WHERE status = 'streaming';
+        UPDATE conversations SET status = 'idle' WHERE status = 'running';
+      `);
+    } catch (err) {
+      console.error('Error cleaning orphaned sessions in DB:', err);
+    }
+  },
   // Projects
   upsertProject(id, name, projPath) {
     const existing = db.prepare('SELECT id FROM projects WHERE id = ?').get(id);

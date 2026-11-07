@@ -41,6 +41,9 @@ const __dirname = path.dirname(__filename);
 // Initialize authentication on boot
 initAuth();
 
+// Clean up any stale active sessions on server start
+dbRepo.cleanupOrphanedSessions();
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });

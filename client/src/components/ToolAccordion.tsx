@@ -78,17 +78,17 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
   };
 
   return (
-    <div className="my-2 border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/70 rounded-lg overflow-hidden text-xs transition-colors">
+    <div className="my-2 border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/70 rounded-lg overflow-hidden text-xs transition-colors w-full min-w-0">
       <div
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors select-none"
       >
-        <div className="flex items-center gap-2 overflow-hidden mr-2">
+        <div className="flex items-center gap-2 overflow-hidden mr-2 min-w-0 flex-1">
           {getToolIcon(step.toolName)}
-          <span className="font-medium text-zinc-800 dark:text-zinc-300 font-mono">
+          <span className="font-medium text-zinc-800 dark:text-zinc-300 font-mono shrink-0">
             {step.toolName}
           </span>
-          <span className="text-zinc-500 dark:text-zinc-400 font-mono truncate max-w-[280px] sm:max-w-md">
+          <span className="text-zinc-500 dark:text-zinc-400 font-mono truncate min-w-0 flex-1">
             {getToolSummary()}
           </span>
         </div>
@@ -121,7 +121,7 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
               <div className="text-zinc-500 dark:text-zinc-400 font-semibold mb-1 uppercase tracking-wider text-[10px]">
                 Параметры:
               </div>
-              <pre className="p-2 bg-zinc-50 dark:bg-zinc-900 rounded border border-zinc-200 dark:border-zinc-800/80 text-zinc-800 dark:text-zinc-300 overflow-x-auto whitespace-pre-wrap max-h-48">
+              <pre className="p-2 bg-zinc-50 dark:bg-zinc-900 rounded border border-zinc-200 dark:border-zinc-800/80 text-zinc-800 dark:text-zinc-300 overflow-x-auto whitespace-pre-wrap break-all max-w-full max-h-48">
                 {typeof step.toolParams === 'string'
                   ? step.toolParams
                   : JSON.stringify(step.toolParams, null, 2)}
@@ -143,7 +143,7 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
                   {copied ? 'Скопировано' : 'Копировать'}
                 </button>
               </div>
-              <pre className="p-2 bg-zinc-900 rounded border border-zinc-800 text-emerald-300 overflow-x-auto whitespace-pre-wrap max-h-64">
+              <pre className="p-2 bg-zinc-900 rounded border border-zinc-800 text-emerald-300 overflow-x-auto whitespace-pre-wrap break-all max-w-full max-h-64">
                 {step.toolOutput}
               </pre>
             </div>

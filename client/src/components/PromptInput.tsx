@@ -42,6 +42,16 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     fetchEngines()
       .then((engines) => {
         setAvailableEngines(engines);
+        // Validate active engine & model from localStorage
+        const curEng = engines.find((e) => e.id === engine) || engines[0];
+        if (curEng && curEng.models.length > 0) {
+          const exists = curEng.models.some((m) => m.id === model);
+          if (!exists) {
+            const def = curEng.models.find((m) => m.default) || curEng.models[0];
+            setModel(def.id);
+            localStorage.setItem('nexus_model', def.id);
+          }
+        }
       })
       .catch(() => {
         // Fallback default list
@@ -52,9 +62,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             provider: 'google',
             isAvailable: true,
             models: [
-              { id: 'auto', name: 'Gemini Auto (Flash / Pro)', default: true },
-              { id: 'pro', name: 'Gemini 2.5 Pro' },
-              { id: 'flash', name: 'Gemini 2.5 Flash' }
+              { id: 'auto', name: 'Gemini Auto (Flash)', default: true },
+              { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)' },
+              { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium)' },
+              { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)' }
             ]
           },
           {
@@ -222,7 +233,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             {showOptions && (
               <div
                 data-testid="engine-options-popup"
-                className="absolute bottom-9 left-0 z-30 flex flex-col gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded-2xl shadow-xl backdrop-blur min-w-[260px] animate-in fade-in duration-150"
+                className="absolute bottom-full mb-3 left-0 z-50 flex flex-col gap-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded-2xl shadow-2xl min-w-[260px] animate-in fade-in duration-150"
               >
                 <div>
                   <label className="block text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">

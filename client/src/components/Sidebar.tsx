@@ -13,7 +13,8 @@ import {
   Moon,
   X,
   Cpu,
-  RotateCw
+  RotateCw,
+  ChevronDown
 } from 'lucide-react';
 import { Project, Conversation, UsageData, VersionInfo } from '../types.ts';
 import { Theme } from '../services/theme.ts';
@@ -58,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [isUsageLoading, setIsUsageLoading] = useState(false);
+  const [isUsageExpanded, setIsUsageExpanded] = useState(true);
 
   const loadUsage = useCallback(async (force = false) => {
     setIsUsageLoading(true);
@@ -197,22 +199,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          <div className="space-y-1 max-h-[380px] sm:max-h-[420px] overflow-y-auto pr-0.5">
+          <div className="space-y-1 max-h-[170px] sm:max-h-[190px] overflow-y-auto pr-0.5">
             {projects.map((proj) => {
               const isSelected = proj.id === selectedProjectId;
               return (
                 <button
                   key={proj.id}
                   onClick={() => handleProjectClick(proj.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group ${
                     isSelected
                       ? 'bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 shadow-xs'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'
                   }`}
                 >
-                  <div className="flex items-start gap-2.5 min-w-0">
+                  <div className="flex items-start gap-2 min-w-0">
                     <FolderGit2
-                      className={`w-4 h-4 shrink-0 mt-0.5 ${
+                      className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
                         isSelected
                           ? 'text-indigo-600 dark:text-indigo-400'
                           : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'
@@ -221,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="min-w-0 flex-1">
                       {/* Top Row: Full Project Name */}
                       <div className="flex items-center justify-between gap-1.5">
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex-1">
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate flex-1 text-xs">
                           {proj.name}
                         </span>
 
@@ -234,11 +236,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
 
                       {/* Bottom Row: Git Branch + Description */}
-                      <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
                         {proj.gitBranch && (
                           <span
                             title={`Git-ветка: ${proj.gitBranch}`}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400 font-mono shrink-0 max-w-[120px]"
+                            className="inline-flex items-center gap-1 px-1 py-0.2 rounded text-[9px] bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400 font-mono shrink-0 max-w-[100px]"
                           >
                             <GitBranch className="w-2.5 h-2.5 text-zinc-400 shrink-0" />
                             <span className="truncate">{proj.gitBranch}</span>
@@ -259,14 +261,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Conversations / Sessions for Selected Project */}
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col min-h-[180px]" data-testid="conversations-sidebar-section">
+          <div className="flex items-center justify-between mb-2 px-1 shrink-0">
             <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
-              Сессии диалогов
+              Сессии диалогов {conversations.length > 0 && `(${conversations.length})`}
             </span>
             <button
               onClick={handleNewConvClick}
+              data-testid="new-conversation-btn"
               className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition cursor-pointer"
             >
               <Plus className="w-3 h-3" />
@@ -275,7 +278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {conversations.length === 0 ? (
-            <div className="text-center py-8 text-zinc-400 dark:text-zinc-600 text-xs font-mono">
+            <div className="text-center py-6 text-zinc-400 dark:text-zinc-600 text-xs font-mono">
               Нет активных диалогов.
               <br />
               Начните новый диалог в поле ввода.
@@ -287,6 +290,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <button
                     key={conv.id}
+                    data-testid="conversation-item"
                     onClick={() => handleConversationClick(conv.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center justify-between group cursor-pointer ${
                       isSelected
@@ -313,14 +317,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Dynamic Model Quotas Widget (/usage) */}
-        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 text-xs shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-200">
+        <div className="p-2.5 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 text-xs shrink-0">
+          <div
+            onClick={() => setIsUsageExpanded(!isUsageExpanded)}
+            className="flex items-center justify-between cursor-pointer select-none py-0.5"
+            title="Свернуть / развернуть лимиты"
+          >
+            <div className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-200 text-xs">
               <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>Лимиты (/usage)</span>
+              <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${isUsageExpanded ? 'rotate-180' : ''}`} />
             </div>
             <button
-              onClick={() => loadUsage(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                loadUsage(true);
+              }}
               disabled={isUsageLoading}
               className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
               title="Обновить остатки квот (/usage)"
@@ -329,102 +341,104 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          <div className="space-y-2.5 font-mono text-[11px] bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
-            {/* Gemini Models group */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-[10px] uppercase tracking-wider">
-                  Gemini Models
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono">Flash/Pro</span>
+          {isUsageExpanded && (
+            <div className="mt-1.5 space-y-1.5 font-mono text-[11px] bg-white dark:bg-zinc-950 p-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+              {/* Gemini Models group */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                    Gemini Models
+                  </span>
+                  <span className="text-zinc-400 font-mono text-[9px]">Flash/Pro</span>
+                </div>
+
+                {/* 5-Hour Limit */}
+                <div className="space-y-0.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-500">5-часовой лимит:</span>
+                    <span
+                      className={`font-semibold ${
+                        (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}
+                      title={usage?.groups[0]?.fiveHour?.description || 'Сброс через 4 часа'}
+                    >
+                      {usage?.groups[0]?.fiveHour ? `${usage.groups[0].fiveHour.percent}%` : '86%'}
+                    </span>
+                  </div>
+                  <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
+                          ? 'bg-emerald-500'
+                          : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                      }`}
+                      style={{ width: `${usage?.groups[0]?.fiveHour?.percent ?? 86}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Weekly Limit */}
+                <div className="space-y-0.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-500">Недельный лимит:</span>
+                    <span
+                      className={`font-semibold ${
+                        (usage?.groups[0]?.weekly?.percent ?? 40) > 50
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}
+                      title={usage?.groups[0]?.weekly?.description || 'Сброс через 1 день'}
+                    >
+                      {usage?.groups[0]?.weekly ? `${usage.groups[0].weekly.percent}%` : '40%'}
+                    </span>
+                  </div>
+                  <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        (usage?.groups[0]?.weekly?.percent ?? 40) > 50
+                          ? 'bg-emerald-500'
+                          : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                      }`}
+                      style={{ width: `${usage?.groups[0]?.weekly?.percent ?? 40}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* 5-Hour Limit */}
-              <div className="space-y-0.5 mb-1.5">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-zinc-500">5-часовой лимит:</span>
-                  <span
-                    className={`font-semibold ${
-                      (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-rose-600 dark:text-rose-400'
-                    }`}
-                    title={usage?.groups[0]?.fiveHour?.description || 'Сброс через 4 часа'}
-                  >
-                    {usage?.groups[0]?.fiveHour ? `${usage.groups[0].fiveHour.percent}%` : '86%'}
+              {/* Claude & GPT models group */}
+              <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800/80 space-y-0.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                    Claude & GPT
                   </span>
+                  <span className="text-[9px] text-zinc-400 font-mono">Opus/Sonnet</span>
                 </div>
-                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
-                        ? 'bg-emerald-500'
-                        : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
-                        ? 'bg-amber-500'
-                        : 'bg-rose-500'
-                    }`}
-                    style={{ width: `${usage?.groups[0]?.fiveHour?.percent ?? 86}%` }}
-                  />
-                </div>
-              </div>
 
-              {/* Weekly Limit */}
-              <div className="space-y-0.5">
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-zinc-500">Недельный лимит:</span>
-                  <span
-                    className={`font-semibold ${
-                      (usage?.groups[0]?.weekly?.percent ?? 40) > 50
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-rose-600 dark:text-rose-400'
-                    }`}
-                    title={usage?.groups[0]?.weekly?.description || 'Сброс через 1 день'}
-                  >
-                    {usage?.groups[0]?.weekly ? `${usage.groups[0].weekly.percent}%` : '40%'}
+                  <span className="text-zinc-500">Остаток квоты:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {usage?.groups[1]?.weekly ? `${usage.groups[1].weekly.percent}%` : '100%'}
                   </span>
                 </div>
-                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      (usage?.groups[0]?.weekly?.percent ?? 40) > 50
-                        ? 'bg-emerald-500'
-                        : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
-                        ? 'bg-amber-500'
-                        : 'bg-rose-500'
-                    }`}
-                    style={{ width: `${usage?.groups[0]?.weekly?.percent ?? 40}%` }}
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${usage?.groups[1]?.weekly?.percent ?? 100}%` }}
                   />
                 </div>
               </div>
             </div>
-
-            {/* Claude & GPT models group */}
-            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-[10px] uppercase tracking-wider">
-                  Claude & GPT
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono">Opus/Sonnet</span>
-              </div>
-
-              <div className="flex justify-between text-[10px]">
-                <span className="text-zinc-500">Остаток квоты:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  {usage?.groups[1]?.weekly ? `${usage.groups[1].weekly.percent}%` : '100%'}
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mt-0.5">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${usage?.groups[1]?.weekly?.percent ?? 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Footer / Version, Multiplexer Status & Logout */}

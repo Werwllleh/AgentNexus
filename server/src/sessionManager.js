@@ -138,6 +138,7 @@ export async function startTurn({
     resumeId: existing?.agy_id
   });
 
+  let lastDbSaveTime = 0;
   const sessionData = {
     conversationId: actualConversationId,
     projectId,
@@ -151,7 +152,17 @@ export async function startTurn({
     assistantMessageId: assistantMsgId,
     accumulatedText: '',
     stepMap: new Map(),
-    startTime: Date.now()
+    startTime: Date.now(),
+    persistText(force = false) {
+      const now = Date.now();
+      if ((force || now - lastDbSaveTime >= 800) && sessionData.conversationId && sessionData.assistantMessageId) {
+        lastDbSaveTime = now;
+        dbRepo.updateMessage(sessionData.assistantMessageId, {
+          content: sessionData.accumulatedText || '',
+          status: 'streaming'
+        });
+      }
+    }
   };
 
   if (actualConversationId) {
@@ -189,8 +200,15 @@ export async function startTurn({
   child.on('error', (err) => {
     console.error(`[Session error]`, err);
     if (sessionData.conversationId) {
+      const errContent = sessionData.accumulatedText
+        ? `${sessionData.accumulatedText}\n\n⚠️ **Ошибка выполнения**: ${err.message}`
+        : `⚠️ **Ошибка выполнения**: ${err.message}`;
+
+      dbRepo.updateMessage(sessionData.assistantMessageId, {
+        content: errContent,
+        status: 'error'
+      });
       dbRepo.updateConversation(sessionData.conversationId, { status: 'error', lastError: err.message });
-      dbRepo.updateMessage(sessionData.assistantMessageId, { status: 'error' });
       activeSessions.delete(sessionData.conversationId);
       broadcastToConversation(sessionData.conversationId, {
         type: 'error',
@@ -216,8 +234,9 @@ export async function startTurn({
     }
 
     if (sessionData.conversationId) {
+      const finalContent = sessionData.accumulatedText || (sessionData.stepMap.size > 0 ? 'Действия успешно выполнены.' : 'Сессия завершена.');
       dbRepo.updateMessage(sessionData.assistantMessageId, {
-        content: sessionData.accumulatedText,
+        content: finalContent,
         status: 'done'
       });
       dbRepo.updateConversation(sessionData.conversationId, { status: 'idle' });
@@ -228,7 +247,7 @@ export async function startTurn({
         type: 'done',
         conversationId: sessionData.conversationId,
         messageId: sessionData.assistantMessageId,
-        finalContent: sessionData.accumulatedText
+        finalContent
       });
 
       broadcast({
@@ -268,6 +287,7 @@ function handleStreamEvent(event, session) {
 
     if (norm.type === 'text_delta') {
       session.accumulatedText += norm.delta;
+      session.persistText?.();
       broadcastToConversation(convId, {
         type: 'text_delta',
         conversationId: convId,
@@ -377,6 +397,7 @@ function handleStreamEvent(event, session) {
     if (su.step_type === 'agent_response') {
       if (su.text_delta) {
         session.accumulatedText += su.text_delta;
+        session.persistText?.();
         // Broadcast token delta to UI
         broadcastToConversation(convId, {
           type: 'text_delta',
@@ -394,10 +415,7 @@ function handleStreamEvent(event, session) {
       }
 
       if (su.state === 'DONE') {
-        dbRepo.updateMessage(session.assistantMessageId, {
-          content: session.accumulatedText,
-          status: 'streaming'
-        });
+        session.persistText?.(true);
       }
     }
 
@@ -493,8 +511,9 @@ function handleStreamEvent(event, session) {
       session.accumulatedText = res.response;
     }
 
+    const finalContent = session.accumulatedText || (session.stepMap.size > 0 ? 'Действия успешно выполнены.' : 'Сессия завершена.');
     dbRepo.updateMessage(session.assistantMessageId, {
-      content: session.accumulatedText,
+      content: finalContent,
       status: 'done'
     });
     dbRepo.updateConversation(convId, { status: 'idle' });
