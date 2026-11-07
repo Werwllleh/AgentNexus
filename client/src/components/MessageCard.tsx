@@ -53,7 +53,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
 
   if (isUser) {
     return (
-      <div data-testid="user-card" className="flex justify-end my-3 w-full">
+      <div data-testid="user-card" data-message-card="true" data-role="user" className="flex justify-end my-3 w-full">
         <div className="max-w-[88%] sm:max-w-[80%] bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md border border-indigo-500/30 text-sm leading-relaxed whitespace-pre-wrap font-sans break-words overflow-hidden">
           {message.content}
         </div>
@@ -62,7 +62,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
   }
 
   return (
-    <div data-testid="assistant-card" className="my-3 w-full min-w-0 group">
+    <div data-testid="assistant-card" data-message-card="true" data-role="assistant" className="my-3 w-full min-w-0 group">
       <div className="w-full min-w-0 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 relative shadow-xs transition-colors overflow-hidden">
         {/* Header toolbar */}
         <div className="flex items-center justify-between mb-3 text-xs text-zinc-500 dark:text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">

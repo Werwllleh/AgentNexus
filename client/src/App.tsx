@@ -25,7 +25,11 @@ export const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isProjectsLoaded, setIsProjectsLoaded] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('project');
+  });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversationDetail, setConversationDetail] = useState<ConversationDetail | null>(null);
@@ -101,18 +105,74 @@ export const App: React.FC = () => {
     }
   }, [isAuthenticated]);
 
+  // Helper to read project from URL
+  const getUrlProject = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('project');
+  };
+
+  // Sync URL when selectedProjectId changes (only after projects have loaded)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isProjectsLoaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const currentInUrl = params.get('project');
+
+    if (selectedProjectId) {
+      if (currentInUrl !== selectedProjectId) {
+        params.set('project', selectedProjectId);
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+      }
+    } else {
+      if (currentInUrl) {
+        params.delete('project');
+        const qs = params.toString();
+        const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+        window.history.replaceState(null, '', newUrl);
+      }
+    }
+  }, [selectedProjectId, isProjectsLoaded]);
+
+  // Handle browser Back / Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const projInUrl = getUrlProject();
+      if (projInUrl) {
+        setSelectedProjectId(projInUrl);
+      } else {
+        setSelectedProjectId(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Load projects
   const loadProjects = useCallback(async () => {
     try {
       const data = await fetchProjects();
       setProjects(data);
-      if (data.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(data[0].id);
+      setIsProjectsLoaded(true);
+
+      const urlProj = getUrlProject();
+      if (urlProj && data.some((p) => p.id === urlProj)) {
+        setSelectedProjectId(urlProj);
+      } else {
+        // If no parameter in URL, or project not found, keep null so "Выберите проект" is shown
+        setSelectedProjectId(null);
+        if (urlProj) {
+          const params = new URLSearchParams(window.location.search);
+          params.delete('project');
+          const qs = params.toString();
+          const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+          window.history.replaceState(null, '', newUrl);
+        }
       }
     } catch (err) {
       console.error('Error loading projects:', err);
+      setIsProjectsLoaded(true);
     }
-  }, [selectedProjectId]);
+  }, []);
 
   // Load conversations for project
   const loadConversations = useCallback(async (projId: string) => {
@@ -164,7 +224,17 @@ export const App: React.FC = () => {
 
   // When selected project changes
   useEffect(() => {
-    if (!selectedProjectId || !isAuthenticated) return;
+    if (!isAuthenticated) return;
+    if (!selectedProjectId) {
+      setConversations([]);
+      setSelectedConversationId(null);
+      setConversationDetail(null);
+      setIsRunning(false);
+      setActiveAssistantMsgId(null);
+      wsClient.unsubscribe();
+      return;
+    }
+
     loadConversations(selectedProjectId).then((convList) => {
       if (convList.length > 0) {
         setSelectedConversationId(convList[0].id);
@@ -602,6 +672,8 @@ export const App: React.FC = () => {
 
       <ChatArea
         project={selectedProject}
+        projects={projects}
+        onSelectProject={setSelectedProjectId}
         conversation={conversationDetail}
         isRunning={isRunning}
         onSendPrompt={handleSendPrompt}

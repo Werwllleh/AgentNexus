@@ -79,6 +79,23 @@ export const dbRepo = {
         WHERE status = 'streaming';
         UPDATE conversations SET status = 'idle' WHERE status = 'running';
       `);
+
+      // Reconcile any orphaned steps in DB whose message_id does not exist in messages table
+      const orphanedStepMessageIds = db.prepare(`
+        SELECT DISTINCT message_id
+        FROM steps
+        WHERE message_id NOT IN (SELECT id FROM messages)
+      `).all();
+
+      for (const orphan of orphanedStepMessageIds) {
+        const conv = db.prepare(`SELECT id FROM conversations ORDER BY updated_at DESC LIMIT 1`).get();
+        if (conv) {
+          db.prepare(`
+            INSERT OR IGNORE INTO messages (id, conversation_id, role, content, created_at, status)
+            VALUES (?, ?, 'assistant', 'Действия сессии выполнены.', ?, 'done')
+          `).run(orphan.message_id, conv.id, Date.now());
+        }
+      }
     } catch (err) {
       console.error('Error cleaning orphaned sessions in DB:', err);
     }
@@ -143,13 +160,22 @@ export const dbRepo = {
     db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').run(now, conversationId);
   },
 
-  updateMessage(id, { content, status }) {
+  updateMessage(id, { content, status, conversationId, role = 'assistant' }) {
+    let res;
     if (content !== undefined && status !== undefined) {
-      db.prepare('UPDATE messages SET content = ?, status = ? WHERE id = ?').run(content, status, id);
+      res = db.prepare('UPDATE messages SET content = ?, status = ? WHERE id = ?').run(content, status, id);
     } else if (content !== undefined) {
-      db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(content, id);
+      res = db.prepare('UPDATE messages SET content = ? WHERE id = ?').run(content, id);
     } else if (status !== undefined) {
-      db.prepare('UPDATE messages SET status = ? WHERE id = ?').run(status, id);
+      res = db.prepare('UPDATE messages SET status = ? WHERE id = ?').run(status, id);
+    }
+    // If the message row was missing for any reason, safely insert it
+    if (res && res.changes === 0 && conversationId) {
+      const now = Date.now();
+      db.prepare(`
+        INSERT OR IGNORE INTO messages (id, conversation_id, role, content, created_at, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(id, conversationId, role, content || '', now, status || 'done');
     }
   },
 

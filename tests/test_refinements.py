@@ -44,12 +44,16 @@ def run_tests():
         )
         page = context.new_page()
 
-        # Login
+        # Login & Open Project
         page.goto(base_url)
         page.fill('input[type="text"]', login)
         page.fill('input[type="password"]', password)
         page.click('button[type="submit"]')
         page.wait_for_selector('header')
+
+        # Navigate to project
+        page.goto(f"{base_url}/?project=project-management")
+        page.wait_for_selector('textarea')
 
         # -------------------------------------------------------------
         # 1. FIXED MOBILE HEADER AT TOP, INPUT AT BOTTOM, MIDDLE SCROLLS
@@ -91,10 +95,10 @@ def run_tests():
         # -------------------------------------------------------------
         usage_widget = sidebar.locator('text=Лимиты (/usage)')
         expect(usage_widget).to_be_visible()
-        expect(sidebar.locator('text=Gemini Models')).to_be_visible()
-        expect(sidebar.locator('text=5-часовой лимит:')).to_be_visible()
-        expect(sidebar.locator('text=Недельный лимит:')).to_be_visible()
-        expect(sidebar.locator('text=Claude & GPT')).to_be_visible()
+        expect(sidebar.locator('text=Gemini Models').first).to_be_visible()
+        expect(sidebar.locator('text=5-часовой лимит:').first).to_be_visible()
+        expect(sidebar.locator('text=Недельный лимит:').first).to_be_visible()
+        expect(sidebar.locator('text=Claude').first).to_be_visible()
         print("  ✓ 4. Dynamic /usage quotas widget is visible in bottom-left corner with live 5h/weekly progress bars")
 
         # -------------------------------------------------------------

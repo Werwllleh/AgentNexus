@@ -18,6 +18,8 @@ import { PromptInput } from './PromptInput.tsx';
 
 interface ChatAreaProps {
   project: Project | null;
+  projects?: Project[];
+  onSelectProject?: (id: string) => void;
   conversation: ConversationDetail | null;
   isRunning: boolean;
   onSendPrompt: (prompt: string, mode: string, effort: string, engine?: string, model?: string) => void;
@@ -31,6 +33,8 @@ interface ChatAreaProps {
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
   project,
+  projects,
+  onSelectProject,
   conversation,
   isRunning,
   onSendPrompt,
@@ -64,15 +68,70 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   if (!project) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-6 text-center text-zinc-500 font-mono text-sm">
-        <button
-          onClick={onOpenMobile}
-          className="md:hidden mb-4 px-4 py-2 rounded-xl bg-indigo-600 text-white font-sans text-xs flex items-center gap-2 shadow-md shadow-indigo-600/20"
-        >
-          <Menu className="w-4 h-4" />
-          <span>Выбрать проект</span>
-        </button>
-        Выберите проект в меню, чтобы начать работу с Gemini.
+      <div className="flex-1 flex flex-col h-full min-h-0 bg-zinc-50 dark:bg-zinc-950 overflow-y-auto">
+        {/* Top Header */}
+        <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 px-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenMobile}
+              className="p-1.5 -ml-1 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer md:hidden"
+              title="Открыть меню проектов"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 font-mono">AgentNexus Studio</span>
+          </div>
+          <span className="text-[11px] font-mono text-zinc-400">Проект не выбран</span>
+        </header>
+
+        {/* Hero Card & Project Grid */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 max-w-4xl mx-auto w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-5 shadow-lg shadow-indigo-500/10">
+            <FolderGit2 className="w-8 h-8" />
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 font-mono" data-testid="empty-project-heading">
+            Выберите проект
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-lg mb-8 font-sans">
+            Выберите проект из списка слева или кликните по одной из карточек ниже, чтобы начать диалог с AI-ассистентом.
+          </p>
+
+          {/* Quick Select Projects Grid */}
+          {projects && projects.length > 0 && (
+            <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onSelectProject?.(p.id)}
+                  data-testid={`select-project-${p.id}`}
+                  className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-md transition-all group cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 shrink-0 mt-0.5">
+                      <FolderGit2 className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        {p.name}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono truncate">
+                        {p.path}
+                      </div>
+                    </div>
+                  </div>
+
+                  {p.gitBranch && (
+                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                      <GitBranch className="w-3 h-3 text-zinc-400" />
+                      <span className="truncate">{p.gitBranch}</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }

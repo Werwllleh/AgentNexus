@@ -351,66 +351,116 @@ let usageCache = null;
 let usageCacheTime = 0;
 const USAGE_CACHE_TTL_MS = 60 * 1000; // 60s cache
 
-app.get('/api/system/usage', async (req, res) => {
-  const force = req.query.force === 'true';
-  const now = Date.now();
+async function fetchUsageFromCLI() {
+  const { stdout } = await execFileAsync(
+    '/home/alex/.local/bin/agy',
+    ['-p', '/usage', '--output-format', 'json'],
+    { timeout: 15000, env: { ...process.env, TERM: 'dumb' } }
+  );
+  return stdout;
+}
 
+async function getUsageData(force = false) {
+  const now = Date.now();
   if (!force && usageCache && now - usageCacheTime < USAGE_CACHE_TTL_MS) {
-    return res.json({ success: true, ...usageCache, cached: true });
+    return { ...usageCache, cached: true };
   }
 
+  let stdout;
   try {
-    const { stdout } = await execFileAsync(
-      '/home/alex/.local/bin/agy',
-      ['-p', '/usage', '--output-format', 'json'],
-      { timeout: 15000, env: { ...process.env, TERM: 'dumb' } }
-    );
+    stdout = await fetchUsageFromCLI();
+  } catch (err) {
+    console.warn('[Usage] Attempt 1 failed:', err.message, '- retrying in 700ms...');
+    await new Promise((r) => setTimeout(r, 700));
+    stdout = await fetchUsageFromCLI();
+  }
 
-    const parsed = JSON.parse(stdout);
-    const groupsRaw = parsed.command?.data?.groups || [];
+  const parsed = JSON.parse(stdout);
+  let formattedGroups = [];
 
-    const formattedGroups = groupsRaw.map((grp) => {
+  if (Array.isArray(parsed.command?.data?.groups) && parsed.command.data.groups.length > 0) {
+    formattedGroups = parsed.command.data.groups.map((grp) => {
       const buckets = grp.buckets || [];
-      const weeklyBucket = buckets.find((b) => b.window === 'weekly') || buckets[0];
-      const fiveHourBucket = buckets.find((b) => b.window === '5h') || buckets[1];
+      const weeklyBucket = buckets.find((b) => b.window === 'weekly') || buckets.find((b) => b.id?.includes('weekly')) || buckets[0];
+      const fiveHourBucket = buckets.find((b) => b.window === '5h') || buckets.find((b) => b.id?.includes('5h')) || buckets[1];
+
+      const parseBucket = (b) => {
+        if (!b) return null;
+        let frac = typeof b.remaining_fraction === 'number' ? b.remaining_fraction : 1;
+        frac = Math.max(0, Math.min(1, frac));
+        const percent = Math.round(frac * 100);
+        return {
+          id: b.id,
+          name: b.name,
+          percent,
+          fraction: frac,
+          resetTime: b.reset_time,
+          description: b.description
+        };
+      };
 
       return {
         name: grp.name,
         description: grp.description,
-        weekly: weeklyBucket
-          ? {
-              name: weeklyBucket.name,
-              percent: Math.round((weeklyBucket.remaining_fraction ?? 1) * 100),
-              fraction: weeklyBucket.remaining_fraction,
-              resetTime: weeklyBucket.reset_time,
-              description: weeklyBucket.description
-            }
-          : null,
-        fiveHour: fiveHourBucket
-          ? {
-              name: fiveHourBucket.name,
-              percent: Math.round((fiveHourBucket.remaining_fraction ?? 1) * 100),
-              fraction: fiveHourBucket.remaining_fraction,
-              resetTime: fiveHourBucket.reset_time,
-              description: fiveHourBucket.description
-            }
-          : null
+        weekly: parseBucket(weeklyBucket),
+        fiveHour: parseBucket(fiveHourBucket)
       };
     });
+  } else if (typeof parsed.response === 'string' && parsed.response.trim()) {
+    // Parse TSV fallback
+    const lines = parsed.response.split('\n');
+    const groupMap = new Map();
+    for (const line of lines) {
+      const parts = line.split('\t').map((s) => s.trim());
+      if (parts.length < 3) continue;
+      const [groupName, bucketName, percentStr, resetTime] = parts;
+      const num = parseInt(percentStr.replace('%', ''), 10);
+      const percent = isNaN(num) ? 100 : Math.max(0, Math.min(100, num));
+      if (!groupMap.has(groupName)) {
+        groupMap.set(groupName, { name: groupName, weekly: null, fiveHour: null });
+      }
+      const g = groupMap.get(groupName);
+      const isWeekly = bucketName.toLowerCase().includes('weekly') || bucketName.toLowerCase().includes('недел');
+      const bObj = {
+        name: bucketName,
+        percent,
+        fraction: percent / 100,
+        resetTime: resetTime || null
+      };
+      if (isWeekly) {
+        g.weekly = bObj;
+      } else {
+        g.fiveHour = bObj;
+      }
+    }
+    formattedGroups = Array.from(groupMap.values());
+  }
 
-    usageCache = {
-      groups: formattedGroups,
-      updatedAt: now
-    };
-    usageCacheTime = now;
+  usageCache = {
+    groups: formattedGroups,
+    updatedAt: now
+  };
+  usageCacheTime = now;
 
-    res.json({ success: true, ...usageCache, cached: false });
+  return { ...usageCache, cached: false };
+}
+
+// Pre-warm usage cache on boot
+setTimeout(() => {
+  getUsageData().then(() => console.log('[Usage] Pre-warmed usage quotas cache')).catch((e) => console.warn('[Usage] Pre-warm failed:', e.message));
+}, 2500);
+
+app.get('/api/system/usage', async (req, res) => {
+  const force = req.query.force === 'true';
+  try {
+    const data = await getUsageData(force);
+    res.json({ success: true, ...data });
   } catch (err) {
-    console.error('Error fetching usage quotas:', err);
+    console.error('Error fetching usage quotas:', err.message);
     if (usageCache) {
       return res.json({ success: true, ...usageCache, stale: true });
     }
-    res.status(500).json({ error: 'Не удалось получить квоты: ' + err.message });
+    res.status(500).json({ error: 'Не удалось получить квоты: ' + err.message, groups: [] });
   }
 });
 

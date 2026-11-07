@@ -78,7 +78,7 @@ export const ToolAccordion: React.FC<ToolAccordionProps> = ({ step }) => {
   };
 
   return (
-    <div className="my-2 border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/70 rounded-lg overflow-hidden text-xs transition-colors w-full min-w-0">
+    <div data-testid="tool-accordion" className="my-2 border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/70 rounded-lg overflow-hidden text-xs transition-colors w-full min-w-0">
       <div
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors select-none"

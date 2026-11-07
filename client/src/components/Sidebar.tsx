@@ -97,6 +97,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile?.();
   };
 
+  const geminiGroup = usage?.groups?.find((g) => g.name.toLowerCase().includes('gemini')) || usage?.groups?.[0];
+  const claudeGroup = usage?.groups?.find((g) => g.name.toLowerCase().includes('claude') || g.name.toLowerCase().includes('gpt')) || usage?.groups?.[1];
+
+  const renderLimitBar = (bucket: any, label: string) => {
+    const hasData = bucket && typeof bucket.percent === 'number';
+    const percent = hasData ? bucket.percent : null;
+
+    let colorClass = 'text-zinc-400';
+    let barColor = 'bg-zinc-300 dark:bg-zinc-700';
+
+    if (percent !== null) {
+      if (percent > 50) {
+        colorClass = 'text-emerald-600 dark:text-emerald-400';
+        barColor = 'bg-emerald-500';
+      } else if (percent > 20) {
+        colorClass = 'text-amber-600 dark:text-amber-400';
+        barColor = 'bg-amber-500';
+      } else {
+        colorClass = 'text-rose-600 dark:text-rose-400';
+        barColor = 'bg-rose-500';
+      }
+    }
+
+    const resetInfo = bucket?.resetTime ? ` (сброс: ${new Date(bucket.resetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : '';
+
+    return (
+      <div className="space-y-0.5">
+        <div className="flex justify-between text-[10px]">
+          <span className="text-zinc-500 dark:text-zinc-400">{label}:</span>
+          <span
+            className={`font-semibold ${colorClass}`}
+            title={(bucket?.description || '') + resetInfo}
+          >
+            {isUsageLoading && !usage ? (
+              <span className="inline-block w-7 h-2.5 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+            ) : percent !== null ? (
+              `${percent}%`
+            ) : (
+              '—'
+            )}
+          </span>
+        </div>
+        <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+            style={{ width: `${percent ?? 0}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Mobile Backdrop Overlay */}
@@ -269,8 +321,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
             <button
               onClick={handleNewConvClick}
+              disabled={!selectedProjectId}
               data-testid="new-conversation-btn"
-              className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition cursor-pointer"
+              className={`flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border transition ${
+                !selectedProjectId
+                  ? 'opacity-40 cursor-not-allowed text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                  : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/20 cursor-pointer'
+              }`}
             >
               <Plus className="w-3 h-3" />
               <span>Новый</span>
@@ -279,9 +336,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {conversations.length === 0 ? (
             <div className="text-center py-6 text-zinc-400 dark:text-zinc-600 text-xs font-mono">
-              Нет активных диалогов.
-              <br />
-              Начните новый диалог в поле ввода.
+              {!selectedProjectId ? (
+                <span>Выберите проект для просмотра диалогов.</span>
+              ) : (
+                <span>
+                  Нет активных диалогов.
+                  <br />
+                  Начните новый диалог в поле ввода.
+                </span>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -342,100 +405,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {isUsageExpanded && (
-            <div className="mt-1.5 space-y-1.5 font-mono text-[11px] bg-white dark:bg-zinc-950 p-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+            <div className="mt-1.5 space-y-2 font-mono text-[11px] bg-white dark:bg-zinc-950 p-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs" data-testid="usage-limits-panel">
               {/* Gemini Models group */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-                    Gemini Models
+                    {geminiGroup?.name || 'Gemini Models'}
                   </span>
-                  <span className="text-zinc-400 font-mono text-[9px]">Flash/Pro</span>
+                  <span className="text-zinc-400 font-mono text-[9px]">Flash / Pro</span>
                 </div>
-
-                {/* 5-Hour Limit */}
-                <div className="space-y-0.5">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-zinc-500">5-часовой лимит:</span>
-                    <span
-                      className={`font-semibold ${
-                        (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                      title={usage?.groups[0]?.fiveHour?.description || 'Сброс через 4 часа'}
-                    >
-                      {usage?.groups[0]?.fiveHour ? `${usage.groups[0].fiveHour.percent}%` : '86%'}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        (usage?.groups[0]?.fiveHour?.percent ?? 86) > 50
-                          ? 'bg-emerald-500'
-                          : (usage?.groups[0]?.fiveHour?.percent ?? 86) > 20
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
-                      }`}
-                      style={{ width: `${usage?.groups[0]?.fiveHour?.percent ?? 86}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Weekly Limit */}
-                <div className="space-y-0.5">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-zinc-500">Недельный лимит:</span>
-                    <span
-                      className={`font-semibold ${
-                        (usage?.groups[0]?.weekly?.percent ?? 40) > 50
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                      title={usage?.groups[0]?.weekly?.description || 'Сброс через 1 день'}
-                    >
-                      {usage?.groups[0]?.weekly ? `${usage.groups[0].weekly.percent}%` : '40%'}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        (usage?.groups[0]?.weekly?.percent ?? 40) > 50
-                          ? 'bg-emerald-500'
-                          : (usage?.groups[0]?.weekly?.percent ?? 40) > 20
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
-                      }`}
-                      style={{ width: `${usage?.groups[0]?.weekly?.percent ?? 40}%` }}
-                    />
-                  </div>
-                </div>
+                {renderLimitBar(geminiGroup?.fiveHour, '5-часовой лимит')}
+                {renderLimitBar(geminiGroup?.weekly, 'Недельный лимит')}
               </div>
 
               {/* Claude & GPT models group */}
-              <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800/80 space-y-0.5">
+              <div className="pt-1.5 border-t border-zinc-100 dark:border-zinc-800/80 space-y-1">
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-                    Claude & GPT
+                    {claudeGroup?.name || 'Claude & GPT'}
                   </span>
-                  <span className="text-[9px] text-zinc-400 font-mono">Opus/Sonnet</span>
+                  <span className="text-[9px] text-zinc-400 font-mono">Opus / Sonnet</span>
                 </div>
-
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-zinc-500">Остаток квоты:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {usage?.groups[1]?.weekly ? `${usage.groups[1].weekly.percent}%` : '100%'}
-                  </span>
-                </div>
-                <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${usage?.groups[1]?.weekly?.percent ?? 100}%` }}
-                  />
-                </div>
+                {renderLimitBar(claudeGroup?.fiveHour, '5-часовой лимит')}
+                {renderLimitBar(claudeGroup?.weekly, 'Недельный лимит')}
               </div>
             </div>
           )}

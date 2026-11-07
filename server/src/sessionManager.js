@@ -56,7 +56,8 @@ export function stopSession(conversationId) {
 
   dbRepo.updateMessage(session.assistantMessageId, {
     content: session.accumulatedText + '\n\n*(Остановлено пользователем)*',
-    status: 'stopped'
+    status: 'stopped',
+    conversationId
   });
   dbRepo.updateConversation(conversationId, { status: 'idle' });
 
@@ -151,6 +152,7 @@ export async function startTurn({
     userMsgId,
     assistantMessageId: assistantMsgId,
     accumulatedText: '',
+    stderrBuffer: '',
     stepMap: new Map(),
     startTime: Date.now(),
     persistText(force = false) {
@@ -159,7 +161,8 @@ export async function startTurn({
         lastDbSaveTime = now;
         dbRepo.updateMessage(sessionData.assistantMessageId, {
           content: sessionData.accumulatedText || '',
-          status: 'streaming'
+          status: 'streaming',
+          conversationId: sessionData.conversationId
         });
       }
     }
@@ -194,7 +197,9 @@ export async function startTurn({
   });
 
   child.stderr.on('data', (chunk) => {
-    console.error(`[agy stderr ${projectId}]:`, chunk.toString());
+    const text = chunk.toString();
+    sessionData.stderrBuffer += text;
+    console.error(`[agy stderr ${projectId}]:`, text);
   });
 
   child.on('error', (err) => {
@@ -206,7 +211,8 @@ export async function startTurn({
 
       dbRepo.updateMessage(sessionData.assistantMessageId, {
         content: errContent,
-        status: 'error'
+        status: 'error',
+        conversationId: sessionData.conversationId
       });
       dbRepo.updateConversation(sessionData.conversationId, { status: 'error', lastError: err.message });
       activeSessions.delete(sessionData.conversationId);
@@ -234,20 +240,38 @@ export async function startTurn({
     }
 
     if (sessionData.conversationId) {
-      const finalContent = sessionData.accumulatedText || (sessionData.stepMap.size > 0 ? 'Действия успешно выполнены.' : 'Сессия завершена.');
+      let finalContent = sessionData.accumulatedText;
+      let finalStatus = 'done';
+
+      if (!finalContent) {
+        if (sessionData.stepMap.size > 0) {
+          finalContent = 'Действия успешно выполнены.';
+        } else if (code === 0) {
+          finalContent = 'Сессия завершена.';
+        } else {
+          finalContent = `⚠️ Ошибка выполнения (код ${code})${sessionData.stderrBuffer ? ':\n' + sessionData.stderrBuffer.trim() : '.'}`;
+          finalStatus = 'error';
+        }
+      }
+
       dbRepo.updateMessage(sessionData.assistantMessageId, {
         content: finalContent,
-        status: 'done'
+        status: finalStatus,
+        conversationId: sessionData.conversationId
       });
-      dbRepo.updateConversation(sessionData.conversationId, { status: 'idle' });
+      dbRepo.updateConversation(sessionData.conversationId, {
+        status: finalStatus === 'error' ? 'error' : 'idle',
+        lastError: finalStatus === 'error' ? (sessionData.stderrBuffer?.slice(0, 100) || `exit code ${code}`) : null
+      });
 
       activeSessions.delete(sessionData.conversationId);
 
       broadcastToConversation(sessionData.conversationId, {
-        type: 'done',
+        type: finalStatus === 'error' ? 'error' : 'done',
         conversationId: sessionData.conversationId,
         messageId: sessionData.assistantMessageId,
-        finalContent
+        finalContent,
+        error: finalStatus === 'error' ? finalContent : undefined
       });
 
       broadcast({
@@ -441,7 +465,8 @@ function handleStreamEvent(event, session) {
           session.accumulatedText += `\n\n⛔ **[СИСТЕМА БЕЗОПАСНОСТИ]** Команда заблокирована: попытка выполнить опасную операцию (${cmd}).`;
           dbRepo.updateMessage(session.assistantMessageId, {
             content: session.accumulatedText,
-            status: 'stopped'
+            status: 'stopped',
+            conversationId: convId
           });
           dbRepo.updateConversation(convId, { status: 'idle' });
           activeSessions.delete(convId);
@@ -514,7 +539,8 @@ function handleStreamEvent(event, session) {
     const finalContent = session.accumulatedText || (session.stepMap.size > 0 ? 'Действия успешно выполнены.' : 'Сессия завершена.');
     dbRepo.updateMessage(session.assistantMessageId, {
       content: finalContent,
-      status: 'done'
+      status: 'done',
+      conversationId: convId
     });
     dbRepo.updateConversation(convId, { status: 'idle' });
 
